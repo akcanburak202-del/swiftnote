@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+captures/
+.kotlin/
+*.apk
+*.aab
+
+# Signing material — never commit
+*.jks
+*.keystore
+*.p12
+
+# Logs and probe output (may contain device data or note text)
+*.log
+logs/
+probes/**/out/
+*.jsonl
+
+# Local tooling
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md
