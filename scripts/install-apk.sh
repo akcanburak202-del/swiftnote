@@ -21,7 +21,10 @@ case "${1:-}" in
   *) APK="$1" ;;
 esac
 PKG="dev.swiftnote"
-ADB="${ADB:-$(command -v adb || echo "${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb")}"
+# Never fall back to an adb on PATH: a different adb version restarts the running server and drops MateBridge's
+# `adb reverse` tunnels (AGENTS.md rule 4). $ADB, else the SDK's platform-tools.
+ADB="${ADB:-${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb}"
+[ -x "$ADB" ] || { echo "adb not found or not executable: $ADB (set ADB=/path/to/adb)" >&2; exit 1; }
 TIMEOUT_S="${INSTALL_TIMEOUT_S:-180}"
 
 [ -f "$APK" ] || { echo "APK not found: $APK" >&2; exit 1; }
@@ -29,6 +32,24 @@ TIMEOUT_S="${INSTALL_TIMEOUT_S:-180}"
 # Only the HUAWEI tablet: another Android device on the cable (e.g. the user's phone) must never get the APK.
 brand="$("$ADB" shell getprop ro.product.brand | tr -d '\r')"
 [ "$brand" = "HUAWEI" ] || { echo "connected device is not the HUAWEI tablet (brand=$brand); not installing" >&2; exit 1; }
+
+UI_DUMP=/sdcard/sn-ui.xml  # on-screen text (could include typed text): never left on the device
+log=""
+install_pid=""
+cleanup() {
+  local rc=$?
+  trap - EXIT INT TERM
+  if [ -n "$install_pid" ]; then  # only the adb install client this script started
+    kill "$install_pid" 2>/dev/null || true
+    wait "$install_pid" 2>/dev/null || true
+  fi
+  [ -z "$log" ] || rm -f "$log"
+  "$ADB" shell rm -f "$UI_DUMP" >/dev/null 2>&1 || true
+  exit $rc
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 before="$("$ADB" shell dumpsys package "$PKG" | sed -n 's/.*lastUpdateTime=//p' | head -1)"
 log="$(mktemp -t sn-install)"
@@ -40,8 +61,9 @@ install_pid=$!
 
 # Prints "x y" for the centre of the first allowed button on screen, or nothing.
 find_button() {
-  "$ADB" shell uiautomator dump /sdcard/sn-ui.xml >/dev/null 2>&1 || return 0
-  "$ADB" exec-out cat /sdcard/sn-ui.xml 2>/dev/null | python3 -c '
+  # Dump, read and delete in one device-side command, so the file exists only for an instant.
+  # (Streaming with `uiautomator dump /dev/tty` would avoid the file but is untested on API 31; kept file-and-delete.)
+  "$ADB" exec-out "rm -f $UI_DUMP; uiautomator dump $UI_DUMP >/dev/null 2>&1 && cat $UI_DUMP; rm -f $UI_DUMP" 2>/dev/null | python3 -c '
 import re, sys, xml.etree.ElementTree as ET
 ALLOWED = {
     ("com.android.packageinstaller", "android:id/button1"),
@@ -83,12 +105,13 @@ while kill -0 "$install_pid" 2>/dev/null; do
 done
 kill "$install_pid" 2>/dev/null || true  # done (or timed out): do not wait on the AppGallery page
 wait "$install_pid" 2>/dev/null || true
+install_pid=""
 cat "$log"
 if grep -q INSTALL_FAILED_VERSION_DOWNGRADE "$log"; then
   echo "VERSION_DOWNGRADE: the installed app is non-debuggable (daily) and has a higher versionCode than this APK." >&2
   echo "versionCode is build-time minutes (ADR 0003): rebuild the APK now (a fresh build is always newer). Do NOT uninstall: that deletes the app data (draft notes)." >&2
 fi
-rm -f "$log"
+rm -f "$log"; log=""
 
 after="$("$ADB" shell dumpsys package "$PKG" | sed -n 's/.*lastUpdateTime=//p' | head -1)"
 if [ "$after" = "$before" ]; then

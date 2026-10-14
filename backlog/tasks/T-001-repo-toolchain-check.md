@@ -1,7 +1,7 @@
 ---
 id: T-001
 title: Repo, araç zinciri ve doğrulama kapısını kur
-status: device-test
+status: review
 phase: 0
 owner: orchestrator      # git/GitHub/cihaz adımları orkestratör; Gradle iskeleti android-dev'e verilebilir
 depends_on: []
@@ -59,3 +59,11 @@ MateBridge `client-android` ayarları kopyalanıp küçültüldü (NDK/CMake/fix
 - **Test edilmeyenler / cihazda doğrulanacaklar:** install-apk.sh çalıştırılmadı (adb yok). Cihazda: `./scripts/check.sh` sonrası `scripts/install-apk.sh`; AppGallery onayı; ana ekranda "build <sha>" ve UTC zamanı görünmeli; `dumpsys package dev.swiftnote | grep lastUpdateTime`; `getprop ro.build.version.sdk`. CI (check.yml) ilk push'ta yeşil mi bakılmalı.
 - **Açık sorular:**
 - **Orkestratör (2026-10-14):** reviewer engelleyici bulgu yok; orkestratör check.sh'yi yeniden çalıştırdı (ALL OK); `main`'e birleşti (89d5ae3). Küçük notlar sonraki bir karta: `.check-doc-fail.tmp` `.gitignore`'da değil; `versionCode = 1` yorumu yanıltıcı; manifestteki `<profileable>` kart dışı ama zararsız; install betiği `/sdcard/sn-ui.xml`'i cihazda bırakıyor (MateBridge'den miras).
+
+### Devir eki: Codex bulguları (install-apk.sh)
+
+- P1 adb: PATH'e hiç düşülmez; `$ADB`, yoksa `${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb`; yoksa net hata.
+- P1 uiautomator dökümü: dump + cat + rm tek cihaz komutunda (`adb exec-out`), dosya anlık yaşar; çıkış tuzağı da `rm -f` yapar. `/dev/tty` ile dosyasız akış denenmedi (API 31'de test edilemedi), bu yüzden dosya-ve-sil yolu korundu.
+- P2 `trap cleanup EXIT` (INT/TERM exit 130/143 ile EXIT'e düşer): yalnız başlatılan adb install istemcisini kill+wait, yerel log'u siler, cihazdaki dökümü siler.
+- Cihazda doğrulanacak: kurulum sonrası `adb shell ls /sdcard/sn-ui.xml` "No such file" vermeli; install-apk.sh düğmeleri hâlâ buluyor mu (exec-out tek komut biçimi).
+- Ek düzeltme: tek komut artık `rm -f F; dump F && cat F; rm -f F`; dump başarısızsa cat çalışmaz, eski/bayat XML okunmaz, koordinat üretilmez.
