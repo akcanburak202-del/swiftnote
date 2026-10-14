@@ -1,7 +1,7 @@
 ---
 id: T-001
 title: Repo, araç zinciri ve doğrulama kapısını kur
-status: review
+status: device-test
 phase: 0
 owner: orchestrator      # git/GitHub/cihaz adımları orkestratör; Gradle iskeleti android-dev'e verilebilir
 depends_on: []
@@ -67,3 +67,4 @@ MateBridge `client-android` ayarları kopyalanıp küçültüldü (NDK/CMake/fix
 - P2 `trap cleanup EXIT` (INT/TERM exit 130/143 ile EXIT'e düşer): yalnız başlatılan adb install istemcisini kill+wait, yerel log'u siler, cihazdaki dökümü siler.
 - Cihazda doğrulanacak: kurulum sonrası `adb shell ls /sdcard/sn-ui.xml` "No such file" vermeli; install-apk.sh düğmeleri hâlâ buluyor mu (exec-out tek komut biçimi).
 - Ek düzeltme: tek komut artık `rm -f F; dump F && cat F; rm -f F`; dump başarısızsa cat çalışmaz, eski/bayat XML okunmaz, koordinat üretilmez.
+- **Orkestratör (2026-10-14, 2. tur):** Codex (`gpt-6.1-sol`, high) 3 bulgu (PATH'teki adb, cihazda kalan UI dökümü, temizlik trap'i) → 0acfe32; yeniden inceleme 1 bulgu (başarısız dökümde bayat XML'den tıklama) → 943a3e6; son Codex okuması temiz. `main`'e birleşti.
