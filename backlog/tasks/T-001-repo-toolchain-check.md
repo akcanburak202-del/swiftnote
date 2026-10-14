@@ -66,3 +66,4 @@ MateBridge `client-android` ayarları kopyalanıp küçültüldü (NDK/CMake/fix
 - P1 uiautomator dökümü: dump + cat + rm tek cihaz komutunda (`adb exec-out`), dosya anlık yaşar; çıkış tuzağı da `rm -f` yapar. `/dev/tty` ile dosyasız akış denenmedi (API 31'de test edilemedi), bu yüzden dosya-ve-sil yolu korundu.
 - P2 `trap cleanup EXIT` (INT/TERM exit 130/143 ile EXIT'e düşer): yalnız başlatılan adb install istemcisini kill+wait, yerel log'u siler, cihazdaki dökümü siler.
 - Cihazda doğrulanacak: kurulum sonrası `adb shell ls /sdcard/sn-ui.xml` "No such file" vermeli; install-apk.sh düğmeleri hâlâ buluyor mu (exec-out tek komut biçimi).
+- Ek düzeltme: tek komut artık `rm -f F; dump F && cat F; rm -f F`; dump başarısızsa cat çalışmaz, eski/bayat XML okunmaz, koordinat üretilmez.

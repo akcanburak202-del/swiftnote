@@ -63,7 +63,7 @@ install_pid=$!
 find_button() {
   # Dump, read and delete in one device-side command, so the file exists only for an instant.
   # (Streaming with `uiautomator dump /dev/tty` would avoid the file but is untested on API 31; kept file-and-delete.)
-  "$ADB" exec-out "uiautomator dump $UI_DUMP >/dev/null 2>&1; cat $UI_DUMP 2>/dev/null; rm -f $UI_DUMP" 2>/dev/null | python3 -c '
+  "$ADB" exec-out "rm -f $UI_DUMP; uiautomator dump $UI_DUMP >/dev/null 2>&1 && cat $UI_DUMP; rm -f $UI_DUMP" 2>/dev/null | python3 -c '
 import re, sys, xml.etree.ElementTree as ET
 ALLOWED = {
     ("com.android.packageinstaller", "android:id/button1"),
