@@ -30,6 +30,7 @@ Kullanıcı alt ajanlı çalışmayı tercih ediyor (MateBridge'de de böyleydi)
 MateBridge'deki `scripts/codex-review.sh` bu projeye T-001'de uyarlanır. Kurallar aynı:
 - `codex exec -s read-only -m gpt-6.1-sol -c model_reasoning_effort="medium" "<istek>" </dev/null` (stdin kapalı; açık kalınca bir kez 25 dk boşa gitti).
 - Efor her çağrıda açıkça verilir, en az `medium`; kritik parçalarda `high`.
+- **Kullanıcı kararı (2026-10-14):** Codex (`gpt-6.1-sol`, `high`) her kartın birleştirme kapısında denetçidir: `./scripts/codex-review.sh --high main task/T-XXX-slug`. İç `reviewer` isteğe bağlı ek okuma.
 - `gpt-6-astra` pahalı; kullanıcı onayı olmadan kullanılmaz.
 - MateBridge'de iç `reviewer` 6 kartta, Codex 135 kartta kullanıldı: Codex fiilen asıl denetçiydi. Burada da kritik kartlarda atlanmaz.
 

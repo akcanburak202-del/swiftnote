@@ -20,3 +20,8 @@ Kaynak: `~/Desktop/matebridge/docs/NOTES.md` ve kararlar (aynı tablet, cihazda 
 ## 2026-10-14 — T-001 kullanıcı kararları
 
 - Paket adı `dev.swiftnote` (ADR 0003). Kısayol `Ctrl+Shift+N` (ADR 0002). Depo public GitHub, CI ile (ADR 0005).
+
+## 2026-10-14 — T-001: SDK seviyesi (doğrulandı, cihazda)
+
+- Build: yok (salt okuma). Çalıştırılan: `adb shell getprop ro.build.version.sdk` / `ro.product.brand` / `ro.build.display.id`; bağlantı kablosuz adb (`adb tcpip`).
+- Sonuç: SDK **31**, marka `HUAWEI`, `MRDI-W09 4.3.0.145(C432E1R1P2)`. ≥33 değil → ADR 0002'ye Android 13 kısıtlı ayar notu gerekmiyor.

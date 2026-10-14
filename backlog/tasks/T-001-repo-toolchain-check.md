@@ -1,7 +1,7 @@
 ---
 id: T-001
 title: Repo, araç zinciri ve doğrulama kapısını kur
-status: review
+status: device-test
 phase: 0
 owner: orchestrator      # git/GitHub/cihaz adımları orkestratör; Gradle iskeleti android-dev'e verilebilir
 depends_on: []
@@ -33,17 +33,17 @@ Bundan sonraki her kartın üstüne oturacağı zemini kurmak: git deposu, MateB
 
 - [x] Kullanıcıya soruldu ve cevap NOTES/karara yazıldı: paket adı, GitHub deposu açılsın mı, `Ctrl+Shift+N` uygun mu.
 - [x] `git init`, ilk commit bu planlama dosyalarıyla; `main` dalı.
-- [ ] Gradle projesi ADR 0003'e göre: AGP 9.4.1, Gradle 9.8.0 wrapper, compileSdk 37, minSdk/targetSdk 31, arm64-v8a, Compose yok; `gradle.properties`'te `org.gradle.daemon.idletimeout=300000`.
-- [ ] `daily` buildType (`initWith(debug)`, `isDebuggable=false`); `versionCode` = derleme dakikası; git SHA `BuildConfig`'te ve başlangıç ekranında görünüyor.
-- [ ] `scripts/check.sh`: `assembleDebug assembleDaily testDebugUnitTest` + belgelerdeki kritik iddiaların varlık kontrolü (ör. AGENTS.md'de adı geçen dosyalar var mı). Tek satır "ALL OK" ya da net hata.
-- [ ] `scripts/install-apk.sh`: MateBridge'deki betikten uyarlandı (yalnız paket + resource-id ile dokun, mağaza ekranlarına asla, HUAWEI olmayan cihazı reddet, `-r -d`, sonucu `dumpsys package` ile doğrula). `adb kill-server` yok.
-- [ ] `scripts/codex-review.sh`: MateBridge'den uyarlandı (salt okunur, efor açık, `</dev/null`).
-- [ ] GitHub deposu açıldıysa `.github/workflows/check.yml`: check.sh'nin cihazsız kısmı (ilk hafta bilgi amaçlı, sonra zorunlu). Açılmadıysa bu madde atlanır.
-- [ ] README'ye "Son doğrulama" tablosu (tarih, build SHA, HarmonyOS sürümü, check.sh).
+- [x] Gradle projesi ADR 0003'e göre: AGP 9.4.1, Gradle 9.8.0 wrapper, compileSdk 37, minSdk/targetSdk 31, arm64-v8a, Compose yok; `gradle.properties`'te `org.gradle.daemon.idletimeout=300000`.
+- [x] `daily` buildType (`initWith(debug)`, `isDebuggable=false`); `versionCode` = derleme dakikası; git SHA `BuildConfig`'te ve başlangıç ekranında görünüyor.
+- [x] `scripts/check.sh`: `assembleDebug assembleDaily testDebugUnitTest` + belgelerdeki kritik iddiaların varlık kontrolü (ör. AGENTS.md'de adı geçen dosyalar var mı). Tek satır "ALL OK" ya da net hata.
+- [x] `scripts/install-apk.sh`: MateBridge'deki betikten uyarlandı (yalnız paket + resource-id ile dokun, mağaza ekranlarına asla, HUAWEI olmayan cihazı reddet, `-r -d`, sonucu `dumpsys package` ile doğrula). `adb kill-server` yok.
+- [x] `scripts/codex-review.sh`: MateBridge'den uyarlandı (salt okunur, efor açık, `</dev/null`).
+- [x] GitHub deposu açıldıysa `.github/workflows/check.yml`: check.sh'nin cihazsız kısmı (ilk hafta bilgi amaçlı, sonra zorunlu). Açılmadıysa bu madde atlanır.
+- [x] README'ye "Son doğrulama" tablosu (tarih, build SHA, HarmonyOS sürümü, check.sh).
 
 ## Cihazda (orkestratör + kullanıcı)
 
-- [ ] `adb shell getprop ro.build.version.sdk` → 31 ya da 32 (NOTES'a). ≥33 ise ADR 0002'ye not düş (Android 13 kısıtlı ayarlar).
+- [x] `adb shell getprop ro.build.version.sdk` → 31 ya da 32 (NOTES'a). ≥33 ise ADR 0002'ye not düş (Android 13 kısıtlı ayarlar).
 - [ ] Boş uygulama güvenli betikle kuruldu; AppGallery kontrolünü kullanıcı onayladı; ekranda SHA görünüyor.
 
 ## Plan
@@ -58,3 +58,4 @@ MateBridge `client-android` ayarları kopyalanıp küçültüldü (NDK/CMake/fix
 - **Varsayımlar:** Gradle wrapper (9.8.0) ve build.gradle.kts MateBridge'den birebir; AGP 9.4.1 + compileSdk 37 derlendi. CI SDK paketleri `platforms;android-37.0`, `build-tools;36.0.0` (MateBridge ile aynı), CI henüz çalıştırılmadı. README tablosundaki SHA birleştirmede doldurulmalı.
 - **Test edilmeyenler / cihazda doğrulanacaklar:** install-apk.sh çalıştırılmadı (adb yok). Cihazda: `./scripts/check.sh` sonrası `scripts/install-apk.sh`; AppGallery onayı; ana ekranda "build <sha>" ve UTC zamanı görünmeli; `dumpsys package dev.swiftnote | grep lastUpdateTime`; `getprop ro.build.version.sdk`. CI (check.yml) ilk push'ta yeşil mi bakılmalı.
 - **Açık sorular:**
+- **Orkestratör (2026-10-14):** reviewer engelleyici bulgu yok; orkestratör check.sh'yi yeniden çalıştırdı (ALL OK); `main`'e birleşti (89d5ae3). Küçük notlar sonraki bir karta: `.check-doc-fail.tmp` `.gitignore`'da değil; `versionCode = 1` yorumu yanıltıcı; manifestteki `<profileable>` kart dışı ama zararsız; install betiği `/sdcard/sn-ui.xml`'i cihazda bırakıyor (MateBridge'den miras).
