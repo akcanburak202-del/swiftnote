@@ -1,7 +1,7 @@
 ---
 id: T-001
 title: Repo, araç zinciri ve doğrulama kapısını kur
-status: todo
+status: review
 phase: 0
 owner: orchestrator      # git/GitHub/cihaz adımları orkestratör; Gradle iskeleti android-dev'e verilebilir
 depends_on: []
@@ -48,13 +48,13 @@ Bundan sonraki her kartın üstüne oturacağı zemini kurmak: git deposu, MateB
 
 ## Plan
 
-_(Doldurulacak.)_
+MateBridge `client-android` ayarları kopyalanıp küçültüldü (NDK/CMake/fixture kaldırıldı, paket `dev.swiftnote`). `check.sh` iki bileşen: `docs` (AGENTS/CLAUDE/README içindeki backtick yolları var mı) ve `android` (assembleDebug assembleDaily testDebugUnitTest). Betikler MateBridge'den uyarlandı. CI yalnız Linux işi, `continue-on-error` (ilk hafta).
 
 ## Devir
 
 - **Commit:**
-- **Dokunulan dosyalar:**
-- **Verify çıktısı (son satırlar):**
-- **Varsayımlar:**
-- **Test edilmeyenler / cihazda doğrulanacaklar:**
+- **Dokunulan dosyalar:** settings.gradle.kts, build.gradle.kts, gradle.properties, gradle/wrapper/*, gradlew(.bat), app/ (build.gradle.kts, manifest, MainActivity, BuildInfo + test), scripts/{check,install-apk,codex-review}.sh, .github/workflows/check.yml, README.md (Son doğrulama tablosu)
+- **Verify çıktısı (son satırlar):** `==> doc claims / OK: doc claims / ==> gradle / OK: gradle / check.sh: ALL OK`
+- **Varsayımlar:** Gradle wrapper (9.8.0) ve build.gradle.kts MateBridge'den birebir; AGP 9.4.1 + compileSdk 37 derlendi. CI SDK paketleri `platforms;android-37.0`, `build-tools;36.0.0` (MateBridge ile aynı), CI henüz çalıştırılmadı. README tablosundaki SHA birleştirmede doldurulmalı.
+- **Test edilmeyenler / cihazda doğrulanacaklar:** install-apk.sh çalıştırılmadı (adb yok). Cihazda: `./scripts/check.sh` sonrası `scripts/install-apk.sh`; AppGallery onayı; ana ekranda "build <sha>" ve UTC zamanı görünmeli; `dumpsys package dev.swiftnote | grep lastUpdateTime`; `getprop ro.build.version.sdk`. CI (check.yml) ilk push'ta yeşil mi bakılmalı.
 - **Açık sorular:**

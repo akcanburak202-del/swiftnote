@@ -32,3 +32,11 @@ probes/              throwaway one-question experiments (Phase 0)
 ```
 
 Kardeş proje ve tecrübe kaynağı: `~/Desktop/matebridge` (aynı tablet, aynı araç zinciri, aynı çalışma düzeni).
+
+## Son doğrulama
+
+| Tarih | Build SHA | HarmonyOS | `scripts/check.sh` |
+|---|---|---|---|
+| 2026-10-14 | T-001 dalı (SHA birleştirmede) | 4.3 (cihazda henüz denenmedi) | ALL OK (docs + assembleDebug + assembleDaily + testDebugUnitTest) |
+
+Doğrulama: `./scripts/check.sh` (belge iddiaları + Gradle). Cihazsız kısmı CI'da da çalışır (`.github/workflows/check.yml`).

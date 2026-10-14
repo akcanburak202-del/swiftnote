@@ -1,0 +1,44 @@
+# Device-free part of scripts/check.sh (ADR 0005). Informational for the first week (continue-on-error),
+# then the continue-on-error line is removed and it becomes a required gate.
+# Only first-party actions.
+name: check
+
+on:
+  push:
+    branches: [main, "task/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true # informational until 2026-10-21
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+          cache-dependency-path: |
+            *.gradle.kts
+            app/*.gradle.kts
+            gradle.properties
+            gradle/wrapper/gradle-wrapper.properties
+      - name: Android SDK packages
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdkmanager" --licenses > /dev/null || true
+          "$sdkmanager" --install "platforms;android-37.0" "build-tools;36.0.0" > /dev/null
+          "$sdkmanager" --list_installed
+      - name: check.sh
+        run: ./scripts/check.sh
