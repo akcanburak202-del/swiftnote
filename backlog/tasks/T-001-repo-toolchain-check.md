@@ -52,7 +52,7 @@ MateBridge `client-android` ayarları kopyalanıp küçültüldü (NDK/CMake/fix
 
 ## Devir
 
-- **Commit:**
+- **Commit:** c53deac (dal task/T-001-repo-toolchain-check)
 - **Dokunulan dosyalar:** settings.gradle.kts, build.gradle.kts, gradle.properties, gradle/wrapper/*, gradlew(.bat), app/ (build.gradle.kts, manifest, MainActivity, BuildInfo + test), scripts/{check,install-apk,codex-review}.sh, .github/workflows/check.yml, README.md (Son doğrulama tablosu)
 - **Verify çıktısı (son satırlar):** `==> doc claims / OK: doc claims / ==> gradle / OK: gradle / check.sh: ALL OK`
 - **Varsayımlar:** Gradle wrapper (9.8.0) ve build.gradle.kts MateBridge'den birebir; AGP 9.4.1 + compileSdk 37 derlendi. CI SDK paketleri `platforms;android-37.0`, `build-tools;36.0.0` (MateBridge ile aynı), CI henüz çalıştırılmadı. README tablosundaki SHA birleştirmede doldurulmalı.
