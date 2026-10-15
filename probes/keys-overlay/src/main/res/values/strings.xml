@@ -1,0 +1,3 @@
+<resources>
+    <string name="service_description">Probe: captures Ctrl+Shift+N only while YouTube has input focus.</string>
+</resources>

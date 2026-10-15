@@ -1,7 +1,7 @@
 ---
 id: T-002
 title: "Probe A: kısayol yakalama ve odaklı not kutusu"
-status: in-progress
+status: review
 phase: 0
 owner: android-dev
 depends_on: [T-001]
@@ -55,9 +55,9 @@ Projenin en büyük iki belirsizliğini cihazda kapatacak bir araç üretmek: (1
 
 ## Devir
 
-- **Commit:**
-- **Dokunulan dosyalar:**
-- **Verify çıktısı (son satırlar):**
-- **Varsayımlar:**
-- **Test edilmeyenler / cihazda doğrulanacaklar:**
-- **Açık sorular:**
+- **Commit:** `git log` içindeki `T-002: implement keys-overlay probe` commit'i
+- **Dokunulan dosyalar:** `probes/keys-overlay/` (settings/build/gradle.properties, manifest, accessibility config, strings, `ShortcutMatcher`(+test), `ProbeState`, `ProbeService`, `NoteBox`, `NoteActivity`, `MainActivity`), bu kart.
+- **Verify çıktısı (son satırlar):** `./gradlew -p probes/keys-overlay assembleDebug testDebugUnitTest` -> `BUILD SUCCESSFUL in 1s / 40 actionable tasks: 12 executed, 28 up-to-date`
+- **Varsayımlar:** Girdi odağı = `AccessibilityWindowInfo.isFocused` + `root.packageName` (root null ise odak "yok", filtre kapalı). Kutu açıkken (A/B) odak kendi paketimizde olduğundan filtre kapalı; başka uygulamaya odak giderse kutu taslakla kapanır. "Enter = kapat" probe'da yalnız taslağı siler, dosya yazmaz. Taslak SharedPreferences'ta (`commit()`); yazma başarısızsa kutu açık kalır. C yolunda Activity durunca (PiP/Son uygulamalar) taslakla kapanır. Yol A/B/C ana ekrandaki radyo düğmesiyle seçilir. YouTube dışında yalnız olay sayısı tutulur; odaktaki paket adı loglanır (tuş kodu değil).
+- **Test edilmeyenler / cihazda doğrulanacaklar:** Kartın "Cihazda" listesinin tamamı. Özellikle: (1) `setServiceInfo` ile çalışma anında flag açıp kapamak HarmonyOS'ta filtreyi gerçekten değiştiriyor mu (log `filter ON/OFF` + MateBridge'de normal yazma); (2) `isFocused` pencere + `root` YouTube için paket adını veriyor mu, bölünmüş ekranda doğru pencere mi; (3) B için overlay izni (ana ekran düğmesi); (4) C'de servisten `startActivity` arka plan kısıtına takılıyor mu; (5) EditText tıklamadan odak alıyor mu, hangi IME.
+- **Açık sorular:** yok
