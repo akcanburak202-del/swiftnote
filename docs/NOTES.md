@@ -25,3 +25,10 @@ Kaynak: `~/Desktop/matebridge/docs/NOTES.md` ve kararlar (aynı tablet, cihazda 
 
 - Build: yok (salt okuma). Çalıştırılan: `adb shell getprop ro.build.version.sdk` / `ro.product.brand` / `ro.build.display.id`; bağlantı kablosuz adb (`adb tcpip`).
 - Sonuç: SDK **31**, marka `HUAWEI`, `MRDI-W09 4.3.0.145(C432E1R1P2)`. ≥33 değil → ADR 0002'ye Android 13 kısıtlı ayar notu gerekmiyor.
+
+## 2026-10-15 — T-001: ilk kurulum (doğrulandı, cihazda)
+
+- Build `98ae409` (`daily`, versionCode 413741, `versionName=0.1-98ae409`). Çalıştırılan: `./scripts/install-apk.sh`.
+- Bağlantı: tablet ev ağında değildi; LAN adresine `adb connect` reddedildi, Tailscale adresine `adb connect <tailscale-ip>:5555` bağlandı (önceden açılmış `adb tcpip 5555` hâlâ etkindi). Kurulum Tailscale üzerinden ~10 sn.
+- İlk kurulumda iki onay çıktı; betik ikisine de paket + resource-id ile kendisi bastı (`com.android.packageinstaller` `android:id/button1`, `com.huawei.appmarket` `hidden_card_install_button_continue`). Kullanıcının dokunması gerekmedi. `adb install` çıktısı `Success`; `lastUpdateTime` boş → `2026-10-15 10:41:43`.
+- `pkgFlags` içinde `DEBUGGABLE` yok (daily derlemesi gerçekten debuggable değil). `/sdcard/sn-ui.xml` kurulumdan sonra yok (Codex düzeltmesi çalışıyor). `MainActivity` öne geldi; ekran görüntüsünde "SwiftNote / build 98ae409 / 2026-10-15T07:41Z".

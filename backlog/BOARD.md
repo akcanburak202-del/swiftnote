@@ -1,12 +1,12 @@
 # Board
 
-_Orkestratör günceller. Son güncelleme: 2026-10-14 (T-001 oturumu)._
+_Orkestratör günceller. Son güncelleme: 2026-10-15 (T-001 oturumu)._
 
 ## Aşama 0 — kurulum ve probe'lar
 
 | Kart | Başlık | Durum | Sahip | Bağımlı |
 |---|---|---|---|---|
-| T-001 | Repo, araç zinciri ve doğrulama kapısını kur | cihaz testi bekliyor | orchestrator + android-dev | — |
+| T-001 | Repo, araç zinciri ve doğrulama kapısını kur | done | orchestrator + android-dev | — |
 | T-002 | Probe A: kısayol yakalama ve odaklı not kutusu | todo | android-dev | T-001 |
 | T-003 | Probe B: YouTube medya oturumu ve paylaşım bağlantısı | todo | android-dev | T-001 |
 | T-004 | Probe C: dosya yazma ve pano | todo | android-dev | T-001 |
@@ -16,4 +16,4 @@ T-002, T-003 ve T-004 ayrı klasörlere dokunur → T-001'den sonra paralel çal
 
 ## Cihaz testi bekliyor
 
-- T-001 (`main` 89d5ae3): SDK seviyesi `getprop`, güvenli betikle ilk kurulum + AppGallery onayı, ekranda SHA.
+_(yok)_

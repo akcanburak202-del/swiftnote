@@ -1,7 +1,7 @@
 ---
 id: T-001
 title: Repo, araç zinciri ve doğrulama kapısını kur
-status: device-test
+status: done
 phase: 0
 owner: orchestrator      # git/GitHub/cihaz adımları orkestratör; Gradle iskeleti android-dev'e verilebilir
 depends_on: []
@@ -44,7 +44,7 @@ Bundan sonraki her kartın üstüne oturacağı zemini kurmak: git deposu, MateB
 ## Cihazda (orkestratör + kullanıcı)
 
 - [x] `adb shell getprop ro.build.version.sdk` → 31 ya da 32 (NOTES'a). ≥33 ise ADR 0002'ye not düş (Android 13 kısıtlı ayarlar).
-- [ ] Boş uygulama güvenli betikle kuruldu; AppGallery kontrolünü kullanıcı onayladı; ekranda SHA görünüyor.
+- [x] Boş uygulama güvenli betikle kuruldu; AppGallery kontrolünü kullanıcı onayladı; ekranda SHA görünüyor.
 
 ## Plan
 
@@ -68,3 +68,4 @@ MateBridge `client-android` ayarları kopyalanıp küçültüldü (NDK/CMake/fix
 - Cihazda doğrulanacak: kurulum sonrası `adb shell ls /sdcard/sn-ui.xml` "No such file" vermeli; install-apk.sh düğmeleri hâlâ buluyor mu (exec-out tek komut biçimi).
 - Ek düzeltme: tek komut artık `rm -f F; dump F && cat F; rm -f F`; dump başarısızsa cat çalışmaz, eski/bayat XML okunmaz, koordinat üretilmez.
 - **Orkestratör (2026-10-14, 2. tur):** Codex (`gpt-6.1-sol`, high) 3 bulgu (PATH'teki adb, cihazda kalan UI dökümü, temizlik trap'i) → 0acfe32; yeniden inceleme 1 bulgu (başarısız dökümde bayat XML'den tıklama) → 943a3e6; son Codex okuması temiz. `main`'e birleşti.
+- **Cihaz (2026-10-15):** `98ae409` güvenli betikle kuruldu (Tailscale üzerinden adb), iki onay düğmesine betik bastı, ekranda SHA görüldü. Ayrıntı: `docs/NOTES.md` 2026-10-15.
