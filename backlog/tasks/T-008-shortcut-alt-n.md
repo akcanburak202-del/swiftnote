@@ -1,7 +1,7 @@
 ---
 id: T-008
 title: "Kısayolu Alt+N yap (Ctrl YouTube'un kısayol panelini açıyor)"
-status: review
+status: done
 phase: 1
 owner: android-dev
 depends_on: [T-007]

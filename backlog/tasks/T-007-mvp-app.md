@@ -1,7 +1,7 @@
 ---
 id: T-007
 title: "Aşama 1 MVP: kısayol → durdur → not kutusu → kaydet + devam (tek uygulama)"
-status: review
+status: done
 phase: 1
 owner: android-dev
 depends_on: [T-001, T-002, T-003, T-004]
