@@ -19,11 +19,40 @@ object NoteFormat {
         return capped.trim().trim('.').trim()
     }
 
-    /** `<Başlık> — <Kanal>.md`; empty parts fall back to placeholders. */
+    /** Whole file name limit on the target filesystems, in UTF-8 bytes. */
+    const val MAX_FILE_NAME_BYTES = 255
+    private const val SEPARATOR = " — "
+    private const val EXTENSION = ".md"
+    private const val MAX_CHANNEL_BYTES = 80
+
+    /** Longest prefix of [s] that fits [maxBytes] of UTF-8, cut on a code-point boundary. */
+    fun truncateUtf8(s: String, maxBytes: Int): String {
+        var bytes = 0
+        var i = 0
+        while (i < s.length) {
+            val cp = s.codePointAt(i)
+            val n = when {
+                cp < 0x80 -> 1
+                cp < 0x800 -> 2
+                cp < 0x10000 -> 3
+                else -> 4
+            }
+            if (bytes + n > maxBytes) break
+            bytes += n
+            i += Character.charCount(cp)
+        }
+        return s.substring(0, i)
+    }
+
+    private fun utf8Len(s: String) = s.toByteArray(Charsets.UTF_8).size
+
+    /** `<Başlık> — <Kanal>.md`, at most 255 UTF-8 bytes; the title gets the larger share. Empty parts fall back. */
     fun fileNameFor(title: String, channel: String): String {
-        val t = sanitizeFileName(title).ifEmpty { FALLBACK_TITLE }
-        val c = sanitizeFileName(channel).ifEmpty { FALLBACK_CHANNEL }
-        return "$t — $c.md"
+        val overhead = utf8Len(SEPARATOR) + utf8Len(EXTENSION)
+        val budget = MAX_FILE_NAME_BYTES - overhead
+        val c = truncateUtf8(sanitizeFileName(channel).ifEmpty { FALLBACK_CHANNEL }, MAX_CHANNEL_BYTES).trim()
+        val t = truncateUtf8(sanitizeFileName(title).ifEmpty { FALLBACK_TITLE }, budget - utf8Len(c)).trim()
+        return "${t.ifEmpty { FALLBACK_TITLE }}$SEPARATOR$c$EXTENSION"
     }
 
     /** `mm:ss`, or `h:mm:ss` from one hour up. Negative clamps to 0. */

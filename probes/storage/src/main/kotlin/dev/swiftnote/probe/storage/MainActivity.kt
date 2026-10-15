@@ -17,6 +17,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import java.io.File
 import java.time.LocalDate
+import java.util.concurrent.Executors
 
 /**
  * Probe C: can a note be appended to MateBridge/Wi-Fi/Video Notları/<title> — <channel>.md and copied to the
@@ -30,6 +31,8 @@ class MainActivity : Activity() {
     private lateinit var timeField: EditText
     private lateinit var noteField: EditText
     private lateinit var result: TextView
+    private lateinit var addButton: Button
+    private val io = Executors.newSingleThreadExecutor()
 
     private val notesDir = File(Environment.getExternalStorageDirectory(), "MateBridge/Wi-Fi/Video Notları")
 
@@ -42,17 +45,17 @@ class MainActivity : Activity() {
             text = "Tüm dosyalara erişim ayarını aç"
             setOnClickListener { openAllFilesSettings() }
         }
-        titleField = field("Başlık", "Şimşek: Ğ ü ö ç — test")
-        channelField = field("Kanal", "Test Kanalı")
-        timeField = field("Zaman (mm:ss)", "00:12")
-        noteField = field("Not (çok satırlı olabilir)", "").apply {
+        titleField = field(1001, "Başlık", "Şimşek: Ğ ü ö ç — test")
+        channelField = field(1002, "Kanal", "Test Kanalı")
+        timeField = field(1003, "Zaman (mm:ss)", "00:12")
+        noteField = field(1004, "Not (çok satırlı olabilir)", "").apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
             minLines = 3
         }
-        val add = Button(this).apply { text = "ekle"; setOnClickListener { addNote() } }
-        result = TextView(this).apply { textSize = 14f; setTextIsSelectable(true) }
+        addButton = Button(this).apply { text = "ekle"; setOnClickListener { addNote() } }
+        result = TextView(this).apply { id = 1005; freezesText = true; textSize = 14f; setTextIsSelectable(true) }
 
-        listOf(permission, grantButton, titleField, channelField, timeField, noteField, add, result).forEach(root::addView)
+        listOf(permission, grantButton, titleField, channelField, timeField, noteField, addButton, result).forEach(root::addView)
         setContentView(ScrollView(this).apply { addView(root) })
     }
 
@@ -63,7 +66,8 @@ class MainActivity : Activity() {
         grantButton.isEnabled = !granted
     }
 
-    private fun field(hint: String, initial: String) = EditText(this).apply {
+    private fun field(viewId: Int, hint: String, initial: String) = EditText(this).apply {
+        id = viewId // stable id so the framework restores the text after recreation
         this.hint = hint
         setText(initial)
         inputType = InputType.TYPE_CLASS_TEXT
@@ -94,23 +98,37 @@ class MainActivity : Activity() {
             result.text = "Not boş."
             return
         }
-        // Disk first; the field is cleared only after a successful write.
-        val written = NoteWriter(notesDir).append(title, channel, time, text, LocalDate.now().toString())
-        val file = written.getOrNull()
-        if (file == null) {
-            val e = written.exceptionOrNull()
-            result.text = "YAZMA HATASI: ${e?.javaClass?.simpleName}: ${e?.message}\nMetin korundu."
-            return
+        addButton.isEnabled = false
+        result.text = "Yazılıyor..."
+        val date = LocalDate.now().toString()
+        // Disk work off the UI thread; order stays write -> clipboard -> show.
+        io.execute {
+            val written = NoteWriter(notesDir).append(title, channel, time, text, date)
+            val file = written.getOrNull()
+            val content = file?.let { f -> try { f.readText() } catch (e: Exception) { "(okunamadı: ${e.javaClass.simpleName})" } }
+            runOnUiThread {
+                addButton.isEnabled = true
+                if (file == null) {
+                    val e = written.exceptionOrNull()
+                    result.text = "YAZMA HATASI: ${e?.javaClass?.simpleName}: ${e?.message}\nMetin korundu."
+                    return@runOnUiThread
+                }
+                val clipText = NoteFormat.clipboardText(time, text)
+                val clip = try {
+                    getSystemService(ClipboardManager::class.java)
+                        .setPrimaryClip(ClipData.newPlainText("SwiftNote", clipText))
+                    "Pano: yazıldı (${clipText.length} karakter)"
+                } catch (e: Exception) {
+                    "PANO HATASI: ${e.javaClass.simpleName}: ${e.message}"
+                }
+                if (noteField.text.toString() == text) noteField.setText("") // keep anything typed meanwhile
+                result.text = "Dosya: ${file.path}\n$clip\n\n$content"
+            }
         }
-        val clip = try {
-            val cm = getSystemService(ClipboardManager::class.java)
-            cm.setPrimaryClip(ClipData.newPlainText("SwiftNote", NoteFormat.clipboardText(time, text)))
-            "Pano: yazıldı (${NoteFormat.clipboardText(time, text).length} karakter)"
-        } catch (e: Exception) {
-            "PANO HATASI: ${e.javaClass.simpleName}: ${e.message}"
-        }
-        noteField.setText("")
-        val content = try { file.readText() } catch (e: Exception) { "(okunamadı: ${e.javaClass.simpleName})" }
-        result.text = "Dosya: ${file.path}\n$clip\n\n$content"
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        io.shutdown() // a running write still finishes
     }
 }

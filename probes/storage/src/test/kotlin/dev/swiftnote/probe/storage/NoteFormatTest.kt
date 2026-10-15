@@ -32,6 +32,22 @@ class NoteFormatTest {
         assertEquals("Başlıksız — Kanalsız.md", NoteFormat.fileNameFor("", "///"))
     }
 
+    @Test fun fileNameFitsUtf8ByteLimit() {
+        val cases = listOf(
+            "😀".repeat(80) to "C",
+            "😀".repeat(300) to "😀".repeat(300),
+            "ş".repeat(300) to "ğ".repeat(300),
+            "a".repeat(300) to "b".repeat(300),
+        )
+        for ((t, c) in cases) {
+            val name = NoteFormat.fileNameFor(t, c)
+            assertTrue(name.toByteArray(Charsets.UTF_8).size <= 255)
+            assertTrue(name.endsWith(".md"))
+            assertFalse(name.contains('\uFFFD'))
+        }
+        assertEquals("ab", NoteFormat.truncateUtf8("abş", 3))
+    }
+
     @Test fun timeFormat() {
         assertEquals("00:00", NoteFormat.formatTime(0))
         assertEquals("12:34", NoteFormat.formatTime(754_900))
