@@ -1,7 +1,7 @@
 ---
 id: T-004
 title: "Probe C: dosya yazma ve pano"
-status: ready
+status: todo
 phase: 0
 owner: android-dev
 depends_on: [T-001]

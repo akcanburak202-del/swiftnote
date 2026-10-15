@@ -1,7 +1,7 @@
 ---
 id: T-002
 title: "Probe A: kısayol yakalama ve odaklı not kutusu"
-status: ready
+status: todo
 phase: 0
 owner: android-dev
 depends_on: [T-001]

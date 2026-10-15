@@ -1,7 +1,7 @@
 ---
 id: T-003
 title: "Probe B: YouTube medya oturumu ve paylaşım bağlantısı"
-status: ready
+status: todo
 phase: 0
 owner: android-dev
 depends_on: [T-001]
