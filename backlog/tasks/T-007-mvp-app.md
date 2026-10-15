@@ -1,7 +1,7 @@
 ---
 id: T-007
 title: "Aşama 1 MVP: kısayol → durdur → not kutusu → kaydet + devam (tek uygulama)"
-status: todo
+status: in-progress
 phase: 1
 owner: android-dev
 depends_on: [T-001, T-002, T-003, T-004]
@@ -63,6 +63,13 @@ Paylaş → bağlantı ekleme, kısayolu değiştirme, üç parmak kaydırma sor
 Önce `dev.swiftnote.probe.keys` servisi kapatılır/kaldırılır (iki servis aynı kısayolu tüketir). Sonra SPEC "Kabul" listesi.
 
 ## Plan
+
+1. Probe'lardan saf sınıfları `app/` altına taşı (ShortcutMatcher/Tracker, NoteFormat, NoteWriter) + testleri; NoteFormat zamansız not ve "Başlıksız video.md" için genişler. Yeni saf sınıflar: `MediaMath` (konum tahmini, kanal seçimi), `ComponentList` (ayar listesinde servis var mı).
+2. `SwiftNoteService` (erişilebilirlik): probe'daki pencere haritası / setFilter / failOpen tasarımı; kutu yaşam döngüsü burada (pause, kaydet, devam, taslak). Disk işleri tek iş parçacıklı executor'da.
+3. `MediaSource` + `MediaAccessListener` (bildirim erişimi, yalnız getActiveSessions için).
+4. `NoteBox` (yol A) + `NoteEditText` (`dispatchKeyEventPreIme`: Enter/Shift+Enter/Esc/BACK). `DraftStore` (SharedPreferences commit + filesDir yedek, bellek önbelleği).
+5. `MainActivity` kurulum ekranı; manifest, servis XML'i, izinler.
+6. `./scripts/check.sh`.
 
 ## Devir
 
