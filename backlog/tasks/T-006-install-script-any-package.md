@@ -1,7 +1,7 @@
 ---
 id: T-006
 title: install-apk.sh paket adını APK'dan okusun (probe'lar için)
-status: in-progress
+status: review
 phase: 0
 owner: android-dev
 depends_on: [T-001]
@@ -44,9 +44,9 @@ Probe APK'ları (`dev.swiftnote.probe.keys`, `.media`, `.storage`) da tablete ya
 
 _(Ajan bitirince doldurur.)_
 
-- **Commit:**
-- **Dokunulan dosyalar:**
-- **Verify çıktısı (son satırlar):**
-- **Varsayımlar:**
-- **Test edilmeyenler / cihazda doğrulanacaklar:**
-- **Açık sorular:**
+- **Commit:** bu commit (`git log -1`)
+- **Dokunulan dosyalar:** scripts/install-apk.sh, bu kart
+- **Verify çıktısı (son satırlar):** `==> gradle  OK: gradle` / `check.sh: ALL OK`; `bash -n` geçti.
+- **Varsayımlar:** aapt2 `$ANDROID_HOME/build-tools/*` içinden en yeni sürüm (`sort -V`), `AAPT2=` ile ezilebilir. APK-yolu denetimi aapt2'den önceye taşındı. Güvenlik mantığı (düğme listesi, HUAWEI denetimi, trap) değişmedi.
+- **Test edilmeyenler / cihazda doğrulanacaklar:** Elde APK olmadığından aapt2 çıktısı gerçek APK'da denenmedi (yalnız sed örnek metinle denendi). Cihazda: probe kurulumunda doğru paketin lastUpdateTime'ı değişiyor ve probe açılıyor; `scripts/install-apk.sh` hâlâ dev.swiftnote'u kurup açıyor.
+- **Açık sorular:** yok
