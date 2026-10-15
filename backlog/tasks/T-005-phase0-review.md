@@ -23,3 +23,13 @@ Probe'lardan çıkan bilgiyi kalıcı hale getirmek ve Aşama 1'i (MVP) kartlara
 - [ ] Probe'larda çalışmayan bir şey varsa SPEC'teki akış kullanıcıyla yeniden konuşuldu.
 - [ ] Aşama 1 kartları yazıldı: her biri tek bağlam penceresine sığar, `files:` alanları paralellik için ayrık; saf mantık ayrı kartta (JVM testli).
 - [ ] Kullanıcı Aşama 1'e geçişi onayladı.
+
+## Aşama 1'e taşınan kurallar (probe incelemelerinden)
+
+Codex'in probe'larda bulduğu, probe için reddedilen ama ürün için geçerli kurallar. Aşama 1 kartlarının kabul kriterlerine girer.
+
+- **Medya komutu yalnız YouTube girdi odağındayken** gönderilir (gecikmeli komut çalışma anında odağı yeniden doğrular); hedefi belirsiz `dispatchMediaKeyEvent` kullanılmaz (T-003, Codex #1/#2).
+- **Not yazıcı Activity ömründen bağımsız** (servis tarafında, sıralı tek iş parçacığı); sonuç güncel kutuya bağlanır, aynı not iki kez yazılmaz (T-004, Codex 45002c6 #2).
+- **Servis kapanırken taslak yazılamazsa** yedek konuma yazılır; metin kaybolmadan kutu kaldırılmaz (T-002, Codex edbb150 #1).
+- **Tuş yolunda uygulama UI iş parçacığına senkron sorgu yok** (`getRoot()` vb.); odak `windowId → paket` önbelleği + `getWindows()` ile (T-002, Codex edbb150 #2).
+- Dosya adı tamamı ≤ 255 UTF-8 bayt (T-004).
