@@ -1,6 +1,6 @@
 # 0004 — Notlar `MateBridge/Wi-Fi` klasörüne ve panoya; otomatik taşıma yok
 
-- **Durum:** konum ve pano kabul (kullanıcı, 2026-10-14); depolama API'si öneri, T-004'e bağlı
+- **Durum:** kabul (konum ve pano: kullanıcı 2026-10-14; `MANAGE_EXTERNAL_STORAGE` + `java.io`: T-004 cihazda 2026-10-15)
 - **Tarih:** 2026-10-14
 
 ## Bağlam

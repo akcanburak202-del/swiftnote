@@ -1,6 +1,6 @@
 # 0002 — Tetikleyici klavye kısayolu, erişilebilirlik servisiyle
 
-- **Durum:** kısayol kabul (kullanıcı, 2026-10-14); mekanizma öneri, T-002 sonucuna bağlı
+- **Durum:** kabul (kısayol: kullanıcı 2026-10-14; mekanizma ve overlay yolu A `TYPE_ACCESSIBILITY_OVERLAY`: T-002 cihazda 2026-10-15)
 - **Tarih:** 2026-10-14
 
 ## Bağlam

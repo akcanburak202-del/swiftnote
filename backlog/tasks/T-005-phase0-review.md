@@ -1,7 +1,7 @@
 ---
 id: T-005
 title: "Aşama 0 değerlendirmesi: bulgular, kararlar, Aşama 1 kartları"
-status: todo
+status: done
 phase: 0
 owner: orchestrator
 depends_on: [T-002, T-003, T-004]
