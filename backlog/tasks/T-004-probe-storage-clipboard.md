@@ -1,7 +1,7 @@
 ---
 id: T-004
 title: "Probe C: dosya yazma ve pano"
-status: todo
+status: in-progress
 phase: 0
 owner: android-dev
 depends_on: [T-001]
@@ -36,7 +36,10 @@ Notların `/sdcard/MateBridge/Wi-Fi/Video Notları/` altına, Türkçe karakterl
 
 ## Plan
 
-_(Ajan doldurur.)_
+1. `probes/storage/` ayrı Gradle projesi (kendi settings/build, AGP 9.4.1, compileSdk 37, minSdk/targetSdk 31, arm64-v8a), paket `dev.swiftnote.probe.storage`.
+2. Saf Kotlin `NoteFormat.kt`: `sanitizeFileName`, `fileNameFor`, `formatTime`, `noteLine`, `initialContent`, `clipboardText` + JVM testleri.
+3. `NoteWriter.kt`: `java.io` ile `Video Notları/` oluştur, dosya yoksa frontmatter+başlık, sonra yalnız sona ekle (`FileOutputStream(append=true)`), hata `Result` ile döner.
+4. `MainActivity.kt`: düz View; izin yoksa "Tüm dosyalara erişim" ayar düğmesi; başlık/kanal/zaman/not alanları; "ekle" önce dosyaya yazar, başarılıysa panoya yazar, yol ve son içerik gösterilir; hata görünür, metin silinmez.
 
 ## Devir
 
