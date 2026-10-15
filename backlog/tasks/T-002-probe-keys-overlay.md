@@ -1,14 +1,14 @@
 ---
 id: T-002
 title: "Probe A: kısayol yakalama ve odaklı not kutusu"
-status: todo
+status: ready
 phase: 0
 owner: android-dev
 depends_on: [T-001]
 decisions: [0002]
 files:
   - probes/keys-overlay/
-verify: (cd probes/keys-overlay && ./gradlew assembleDebug)
+verify: ./gradlew -p probes/keys-overlay assembleDebug
 ---
 
 ## Amaç
@@ -22,7 +22,7 @@ Projenin en büyük iki belirsizliğini cihazda kapatacak bir araç üretmek: (1
 
 ## Kabul kriterleri
 
-- [ ] Ayrı paket (`<paket>.probe.keys`), erişilebilirlik servisi `flagRequestFilterKeyEvents` ile.
+- [ ] Ayrı paket (`dev.swiftnote.probe.keys`), erişilebilirlik servisi `flagRequestFilterKeyEvents` ile.
 - [ ] Tuş filtresi (`flagRequestFilterKeyEvents`) çalışma anında açılıp kapanır: yalnız YouTube penceresi girdi odağındayken açık (pencere olayları + `getWindows()` ile odak). Bölünmüş ekranda odak belirleyicidir. Geçişler loglanır (zaman damgalı).
 - [ ] Filtre açıkken yalnız tam `Ctrl+Shift+N` down/up çifti tüketilir; diğer her şey `false`. Her istisna yakalanır → `false` + filtre kapanır.
 - [ ] Log: YouTube içinde keyCode, action, metaState, repeatCount; **YouTube dışında hiçbir keyCode loglanmaz** (yalnız olay sayısı ve filtre durumu). Yazılan metin hiçbir yerde loglanmaz.

@@ -1,14 +1,14 @@
 ---
 id: T-004
 title: "Probe C: dosya yazma ve pano"
-status: todo
+status: ready
 phase: 0
 owner: android-dev
 depends_on: [T-001]
 decisions: [0004]
 files:
   - probes/storage/
-verify: (cd probes/storage && ./gradlew assembleDebug testDebugUnitTest)
+verify: ./gradlew -p probes/storage assembleDebug testDebugUnitTest
 ---
 
 ## Amaç
@@ -21,7 +21,7 @@ Notların `/sdcard/MateBridge/Wi-Fi/Video Notları/` altına, Türkçe karakterl
 
 ## Kabul kriterleri
 
-- [ ] Ayrı paket (`<paket>.probe.storage`), `MANAGE_EXTERNAL_STORAGE`; izin yoksa ayar ekranına götüren düğme.
+- [ ] Ayrı paket (`dev.swiftnote.probe.storage`), `MANAGE_EXTERNAL_STORAGE`; izin yoksa ayar ekranına götüren düğme.
 - [ ] Saf Kotlin, JVM testli: dosya adı temizleme (`/ \ : * ? " < > | # ^ [ ]`, Türkçe korunur, uzunluk sınırı), not satırı biçimi (`- **mm:ss** metin`, çok satırlı not girintili), ilk yazımda frontmatter + başlık.
 - [ ] Ekranda: başlık, kanal, zaman ve not alanları; "ekle" → dosyaya ekler ve panoya `mm:ss — not` yazar; dosyanın tam yolunu ve son içeriğini gösterir.
 - [ ] Yazma hatası ekranda görünür, metin silinmez.

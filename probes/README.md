@@ -8,4 +8,4 @@ Her probe tek bir soruya cevap veren **atılabilir** küçük bir Android uygula
 | `media-session/` | YouTube medya oturumu başlık/kanal/konum veriyor mu, durdur/devam çalışıyor mu, Paylaş bağlantı veriyor mu? | T-003 |
 | `storage/` | `MateBridge/Wi-Fi/Video Notları/` altına Türkçe adlı dosyaya ekleme ve panoya yazma çalışıyor mu? | T-004 |
 
-Probe'lar ürünle aynı Gradle sürümlerini kullanır ama ayrı Gradle projeleridir (ya da kök projede ayrı modüller; T-001 karar verir).
+Probe'lar ürünle aynı Gradle/AGP sürümlerini kullanır ama **ayrı Gradle projeleridir** (kendi `settings.gradle.kts`'leri var, kök projeye modül olarak eklenmez; böylece kök dosyalara dokunmadan paralel geliştirilir). Kökteki wrapper kullanılır: `./gradlew -p probes/<ad> assembleDebug`. JDK/SDK: `scripts/check.sh` ile aynı (`JAVA_HOME` = Android Studio JBR, `ANDROID_HOME` = `~/Library/Android/sdk`). Paket adları: `dev.swiftnote.probe.keys`, `dev.swiftnote.probe.media`, `dev.swiftnote.probe.storage`. Probe'lar `check.sh`'ye ve CI'a girmez.

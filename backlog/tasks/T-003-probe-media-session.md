@@ -1,14 +1,14 @@
 ---
 id: T-003
 title: "Probe B: YouTube medya oturumu ve paylaşım bağlantısı"
-status: todo
+status: ready
 phase: 0
 owner: android-dev
 depends_on: [T-001]
 decisions: [0001]
 files:
   - probes/media-session/
-verify: (cd probes/media-session && ./gradlew assembleDebug)
+verify: ./gradlew -p probes/media-session assembleDebug
 ---
 
 ## Amaç
@@ -21,7 +21,7 @@ YouTube'un medya oturumu üzerinden videoyu durdurup başlatabildiğimizi ve not
 
 ## Kabul kriterleri
 
-- [ ] Ayrı paket (`<paket>.probe.media`), `NotificationListenerService` (yalnız oturum erişimi için; bildirimleri okumaz/loglamaz).
+- [ ] Ayrı paket (`dev.swiftnote.probe.media`), `NotificationListenerService` (yalnız oturum erişimi için; bildirimleri okumaz/loglamaz).
 - [ ] Ekranda: etkin oturumlar listesi; YouTube oturumu için TITLE, ARTIST, ALBUM, MEDIA_ID, DURATION, playbackState (durum, position, lastPositionUpdateTime, speed).
 - [ ] Düğmeler: "3 sn sonra durdur", "3 sn sonra devam" (kullanıcı arada YouTube'a geçebilsin), "konumu oku". Durdurduktan sonra okunan konum ekranda `mm:ss`.
 - [ ] Yedek düğme: `AudioManager.dispatchMediaKeyEvent` ile durdur/devam.
