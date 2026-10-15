@@ -32,3 +32,23 @@ Kaynak: `~/Desktop/matebridge/docs/NOTES.md` ve kararlar (aynı tablet, cihazda 
 - Bağlantı: tablet ev ağında değildi; LAN adresine `adb connect` reddedildi, Tailscale adresine `adb connect <tailscale-ip>:5555` bağlandı (önceden açılmış `adb tcpip 5555` hâlâ etkindi). Kurulum Tailscale üzerinden ~10 sn.
 - İlk kurulumda iki onay çıktı; betik ikisine de paket + resource-id ile kendisi bastı (`com.android.packageinstaller` `android:id/button1`, `com.huawei.appmarket` `hidden_card_install_button_continue`). Kullanıcının dokunması gerekmedi. `adb install` çıktısı `Success`; `lastUpdateTime` boş → `2026-10-15 10:41:43`.
 - `pkgFlags` içinde `DEBUGGABLE` yok (daily derlemesi gerçekten debuggable değil). `/sdcard/sn-ui.xml` kurulumdan sonra yok (Codex düzeltmesi çalışıyor). `MainActivity` öne geldi; ekran görüntüsünde "SwiftNote / build 98ae409 / 2026-10-15T07:41Z".
+
+## 2026-10-15 — T-006: paket algılama (doğrulandı, cihazda)
+
+- Build: storage probe (`dev.swiftnote.probe.storage`). Çalıştırılan: `./scripts/install-apk.sh <probe apk>`.
+- Betik paket adını ve başlatılabilir activity'yi `aapt2 dump badging` ile apk'dan okudu, doğru paketi kurup `lastUpdateTime` ile doğruladı.
+- Ekran uykudayken (`mWakefulness=Asleep`) kurulum onay ekranı görünmüyor ve betik zaman aşımına uğruyor. Kurulumdan önce ekran açık olmalı.
+
+## 2026-10-15 — T-004: depolama (kısmi, cihazda)
+
+- Doğrulandı: `MANAGE_EXTERNAL_STORAGE` izni verilebiliyor; Türkçe karakterli ve `—` içeren başlıkla dosya oluştu, frontmatter ve başlık doğru, ilk madde `- **00:12** …` biçiminde.
+- Sınanmadı: aynı dosyaya ikinci not, Mac/Obsidian tarafında görünme, pano.
+
+## 2026-10-15 — T-002: tuş filtresi ve kutu (kısmi, cihazda)
+
+- Build: keys probe, `main` `cedbcc6` (`dev.swiftnote.probe.keys`, kullanıcı kurdu, `lastUpdateTime=2026-10-15 11:35:14`). Yol A (`TYPE_ACCESSIBILITY_OVERLAY`), overlay izni yok.
+- Doğrulandı: YouTube öndeyken Ctrl+Shift+N servise ulaşıyor ve kutu açılıyor. YouTube dışında filtre OFF, diğer kısayollar çalışıyor, YouTube dışı tuş sayacı 0.
+- Meta değerleri (klavye kılıfı): Num Lock açık `0x200000`; Shift `+0x41`; Ctrl `+0x3000`. Ctrl+Shift+N = `meta=0x203041`; YouTube'da Shift+Enter = `key=66 meta=0x200041` (Shift ulaşıyor).
+- Kutu içinde Shift+Enter ile Enter aynı davranıyor ve "son kaydedilen not" boş kalıyor → Enter kutunun kaydetme yoluna hiç ulaşmıyor. Çıkarım: IME (`com.huawei.ohos.inputmethod`, Celia) donanım Enter'ını `EditText` içinde işliyor. Aşama 1'de `dispatchKeyEventPreIme` ile IME'den önce yakalanacak.
+- **Üç parmakla yukarı kaydırma (dokunmatik yüzey → ana ekran) servis açıkken YouTube'da çalışmıyor;** filtrenin kapalı olduğu diğer uygulamalarda çalışıyor; servis kapatılınca YouTube'da da çalışıyor. Yani bozan şey filtrenin açık olması. Hareketin tuş olayı mı dokunmatik yüzey olayı mı olduğu henüz ayrılmadı.
+- Huawei logcat'te `Log.i` görünmüyor (probe'un geçiş logu boş geldi). Erişilebilirlik servisi açılmadan önce cihazda açık başka servis yoktu.
