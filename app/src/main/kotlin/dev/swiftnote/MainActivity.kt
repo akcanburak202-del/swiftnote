@@ -35,7 +35,7 @@ class MainActivity : Activity() {
         button(root, "Bildirim erişimi ayarları") { open(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS) }
         files = text(16f)
         button(root, "Tüm dosyalara erişim ayarı") { openFilesAccess() }
-        text(16f).text = "\nKullanım: YouTube'da Ctrl+Shift+N. Enter kaydeder ve devam ettirir, Shift+Enter yeni satır, " +
+        text(16f).text = "\nKullanım: YouTube'da Alt+N. Enter kaydeder ve devam ettirir, Shift+Enter yeni satır, " +
             "Esc taslak olarak kapatır."
         last = text(16f)
         setContentView(ScrollView(this).apply { addView(root) })

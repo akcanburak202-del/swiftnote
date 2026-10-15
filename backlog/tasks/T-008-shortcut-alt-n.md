@@ -1,7 +1,7 @@
 ---
 id: T-008
 title: "Kısayolu Alt+N yap (Ctrl YouTube'un kısayol panelini açıyor)"
-status: todo
+status: review
 phase: 1
 owner: android-dev
 depends_on: [T-007]
@@ -24,4 +24,9 @@ YouTube'da Ctrl'ye basmak YouTube'un kendi kısayol panelini açıyor (arka plan
 
 ## Plan
 
+Matcher: Alt şart, Ctrl/Shift/Meta yasak; testler ve metinler güncellenir.
+
 ## Devir
+
+Dosyalar: ShortcutMatcher(+Test), ShortcutTrackerTest, strings.xml, MainActivity, SwiftNoteService (yorum). check.sh: ALL OK. Tablette denenmedi.
+Tablette kontrol: YouTube'da Alt+N not kutusunu açıyor mu; Ctrl paneli açılmıyor mu; Ctrl+Shift+N artık bir şey yapmıyor mu; Alt tek başına ve başka Alt kombinasyonları geçiyor mu.
