@@ -19,7 +19,7 @@ T-002, T-003, T-004 ve T-006 ayrı dosyalara dokunur → T-001'den sonra paralel
 
 | Kart | Başlık | Durum | Sahip | Bağımlı |
 |---|---|---|---|---|
-| T-007 | MVP: kısayol → durdur → not kutusu → kaydet + devam | in-progress | android-dev | T-001..T-004 |
+| T-007 | MVP: kısayol → durdur → not kutusu → kaydet + devam | cihaz testi (0ad6f18 kurulu) | android-dev | T-001..T-004 |
 
 ## Cihaz testi bekliyor
 
