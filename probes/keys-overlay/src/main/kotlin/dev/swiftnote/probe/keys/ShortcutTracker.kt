@@ -8,12 +8,12 @@ enum class Decision { PASS, CONSUME, CONSUME_AND_OPEN }
 class ShortcutTracker {
     private var held = false
 
-    fun onKey(keyCode: Int, action: Int, metaState: Int): Decision {
+    fun onKey(keyCode: Int, action: Int, metaState: Int, repeatCount: Int): Decision {
         if (keyCode != KeyEvent.KEYCODE_N) return Decision.PASS
         return when (action) {
             KeyEvent.ACTION_DOWN -> when {
                 held -> Decision.CONSUME // auto-repeat of the consumed press
-                ShortcutMatcher.matches(keyCode, metaState) -> {
+                repeatCount == 0 && ShortcutMatcher.matches(keyCode, metaState) -> {
                     held = true
                     Decision.CONSUME
                 }

@@ -12,6 +12,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.Toast
 
 /**
@@ -47,6 +48,10 @@ class ProbeService : AccessibilityService() {
             val pkg = event?.packageName?.toString()
             if (id != -1 && pkg != null && event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
                 windowPkg[id] = pkg
+                // A launcher/MateBridge/any other app appearing closes an open box (drafts kept).
+                if (pkg != ProbeState.YOUTUBE && pkg != packageName && pkg != imePackage()) {
+                    ProbeState.activeBox?.closeAsDraft("window event from $pkg")
+                }
             }
         } catch (_: Throwable) {
         }
@@ -96,18 +101,48 @@ class ProbeService : AccessibilityService() {
             val wins = windows
             var focusedId = -1
             val liveIds = HashSet<Int>()
+            val infos = ArrayList<WinInfo>()
             wins?.forEach {
                 liveIds.add(it.id)
                 if (it.isFocused) focusedId = it.id
+                infos.add(WinInfo(it.id, it.type, it.layer))
                 it.recycle()
             }
             windowPkg.keys.retainAll(liveIds)
+            if (ProbeState.activeBox != null) checkUnderlying(infos)
             if (focusedId == -1) null else windowPkg[focusedId]
         } catch (t: Throwable) {
             ProbeState.logTransition("focus lookup failed: ${t.javaClass.simpleName}")
             failOpen("focus lookup error")
             null
         }
+    }
+
+    private class WinInfo(val id: Int, val type: Int, val layer: Int)
+
+    /**
+     * An A/B box is its own focusable window and can outlive a Home press. While a box is open, the topmost real
+     * application window (skipping our own, IME, accessibility overlay and system windows) must be known YouTube;
+     * anything else, or unknown, closes the box as a draft.
+     */
+    private fun checkUnderlying(infos: List<WinInfo>) {
+        var under: String? = null
+        for (w in infos.sortedByDescending { it.layer }) {
+            if (w.type != AccessibilityWindowInfo.TYPE_APPLICATION) continue
+            val pkg = windowPkg[w.id]
+            if (pkg == packageName) continue
+            under = pkg
+            break
+        }
+        if (under != ProbeState.YOUTUBE) {
+            ProbeState.activeBox?.closeAsDraft("underlying app is ${under ?: "unknown"}")
+        }
+    }
+
+    private fun imePackage(): String? = try {
+        Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)?.substringBefore('/')
+    } catch (_: Throwable) {
+        null
     }
 
     private fun applyFocus(pkg: String?) {
@@ -183,7 +218,7 @@ class ProbeService : AccessibilityService() {
                 return false
             }
             ProbeState.logYoutubeKey(event.keyCode, event.action, event.metaState, event.repeatCount)
-            return when (tracker.onKey(event.keyCode, event.action, event.metaState)) {
+            return when (tracker.onKey(event.keyCode, event.action, event.metaState, event.repeatCount)) {
                 Decision.PASS -> false
                 Decision.CONSUME -> true
                 Decision.CONSUME_AND_OPEN -> {

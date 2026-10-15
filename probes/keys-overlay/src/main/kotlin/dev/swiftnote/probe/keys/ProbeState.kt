@@ -46,12 +46,11 @@ object ProbeState {
 
     fun setLastNote(c: Context, text: String): Boolean = prefs(c).edit().putString("lastNote", text).commit()
 
-    /** Only called while YouTube has input focus. */
+    /** Only called while YouTube has input focus. In memory only: key codes never go to logcat. */
     @Synchronized fun logYoutubeKey(keyCode: Int, action: Int, meta: Int, repeat: Int) {
         val line = "${fmt.format(Date())} key=$keyCode act=$action meta=0x${meta.toString(16)} rep=$repeat"
         keyLog.addFirst(line)
         while (keyLog.size > 20) keyLog.removeLast()
-        Log.i(TAG, "YT $line")
     }
 
     @Synchronized fun recentKeys(): List<String> = keyLog.toList()
