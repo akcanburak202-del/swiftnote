@@ -1,7 +1,7 @@
 ---
 id: T-002
 title: "Probe A: kısayol yakalama ve odaklı not kutusu"
-status: todo
+status: in-progress
 phase: 0
 owner: android-dev
 depends_on: [T-001]
@@ -47,7 +47,11 @@ Projenin en büyük iki belirsizliğini cihazda kapatacak bir araç üretmek: (1
 
 ## Plan
 
-_(Ajan doldurur.)_
+- Bağımsız Gradle projesi `probes/keys-overlay/` (settings + build.gradle.kts, AGP 9.4.1 yerleşik Kotlin, compileSdk 37, min/target 31, bağımlılık yok, test için junit).
+- `ShortcutMatcher` (saf Kotlin, JVM testli): tam Ctrl+Shift+N tespiti. `ProbeState`: süreç içi durum (filtre, yol, son 20 YouTube tuşu, taslak).
+- `ProbeService` (AccessibilityService): XML'de canRequestFilterKeyEvents + canRetrieveWindowContent + flagRetrieveInteractiveWindows; filtre başlangıçta kapalı. Pencere olaylarında `getWindows()` ile girdi odaklı pencerenin paketi bulunur; YouTube ise `setServiceInfo` ile flag açılır, değilse kapanır (zaman damgalı log). `onKeyEvent` try/catch: hata -> false + filtre kapat.
+- `NoteBox` (FrameLayout + EditText): Enter kapat, Shift+Enter satır, Esc/BACK iptal (taslak), 60 sn hareketsizlik zaman aşımı. A/B `WindowManager` ile (NOT_FOCUSABLE yok), C `NoteActivity` (saydam).
+- `MainActivity`: durum, yol seçimi, son 20 tuş, izin/ayar kısayolları, "servisi kapat".
 
 ## Devir
 
