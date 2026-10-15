@@ -1,7 +1,7 @@
 ---
 id: T-004
 title: "Probe C: dosya yazma ve pano"
-status: in-progress
+status: review
 phase: 0
 owner: android-dev
 depends_on: [T-001]
@@ -43,9 +43,9 @@ Notların `/sdcard/MateBridge/Wi-Fi/Video Notları/` altına, Türkçe karakterl
 
 ## Devir
 
-- **Commit:**
-- **Dokunulan dosyalar:**
-- **Verify çıktısı (son satırlar):**
-- **Varsayımlar:**
-- **Test edilmeyenler / cihazda doğrulanacaklar:**
-- **Açık sorular:**
+- **Commit:** son `T-004: storage and clipboard probe` commit'i (`git log -1`)
+- **Dokunulan dosyalar:** `probes/storage/` (settings/build.gradle.kts, AndroidManifest, `NoteFormat.kt`, `NoteWriter.kt`, `MainActivity.kt`, `NoteFormatTest.kt`), bu kart.
+- **Verify çıktısı (son satırlar):** `./gradlew -p probes/storage assembleDebug testDebugUnitTest` -> `> Task :testDebugUnitTest` ... `BUILD SUCCESSFUL in 2s`, `40 actionable tasks: 40 executed`.
+- **Varsayımlar:** Zaman alanı elle yazılan `mm:ss` metni (probe'da medya yok); saat >= 1 ise `h:mm:ss`. Ad parçaları 80 kod noktasına kısalır; boş parça `Başlıksız` / `Kanalsız`. Frontmatter'da kanal yalnız riskli karakter varsa tırnaklanır. Ekleme `FileOutputStream(append=true)` + `fd.sync()`; dosya `\n` ile bitmiyorsa önce `\n` eklenir. Yazma başarılıysa not alanı temizlenir ve panoya yazılır; yazma hatasında metin kalır.
+- **Test edilmeyenler / cihazda doğrulanacaklar:** Hepsi cihazda. APK: `probes/storage/build/outputs/apk/debug/` (paket `dev.swiftnote.probe.storage`). İzin düğmesi HarmonyOS'ta doğru ayar ekranını açıyor mu (yoksa genel ekrana düşer; yeri NOTES'a); `Video Notları` klasörü oluşuyor mu; Türkçe adlı iki ekleme tek dosya; Mac'te MateBridge'de görünüm, Obsidian'da frontmatter; Cmd+V. Alanlar `Şimşek: Ğ ü ö ç — test` / `Test Kanalı` ile dolu açılır.
+- **Açık sorular:** Yok.
