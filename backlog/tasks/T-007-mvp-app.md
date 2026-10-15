@@ -1,7 +1,7 @@
 ---
 id: T-007
 title: "Aşama 1 MVP: kısayol → durdur → not kutusu → kaydet + devam (tek uygulama)"
-status: in-progress
+status: review
 phase: 1
 owner: android-dev
 depends_on: [T-001, T-002, T-003, T-004]
@@ -72,5 +72,22 @@ Paylaş → bağlantı ekleme, kısayolu değiştirme, üç parmak kaydırma sor
 6. `./scripts/check.sh`.
 
 ## Devir
+
+- Commit: dalın son commit'i "T-007: MVP app". `./scripts/check.sh` -> `check.sh: ALL OK` (doc claims OK, gradle OK).
+- Dosyalar (hepsi `app/`): `SwiftNoteService`, `NoteBox` (+ `NoteEditText`), `MediaSource` (+ `MediaAccessListener`), `DraftStore`, `NoteFormat`/`NoteWriter` (probe'dan; zamansız not + `Başlıksız video.md` eklendi), `ShortcutMatcher`/`ShortcutTracker`, `MediaMath` (+ `ComponentList`), `MainActivity`, manifest, `res/xml/accessibility_service_config.xml`, `res/values/strings.xml`; testler: `NoteFormatTest`, `ShortcutMatcherTest`, `ShortcutTrackerTest`, `MediaMathTest`.
+- Varsayımlar / tasarım:
+  - Kutu açıkken odak bizim overlay penceresinde olduğundan filtre kapalı; "YouTube hâlâ odakta" kontrolü = altındaki en üst uygulama penceresi YouTube (probe'daki `checkUnderlying` mantığı). Devam (`play()`) yalnız Enter / boş Enter / Esc / BACK / 2 dk zaman aşımında; odak kaybı, fail-open ve servis kapanışında devam ETMEZ.
+  - Not ve taslak yazımı aynı tek iş parçacıklı executor'da; kutu sonuç gelince kapanır. Esc'de taslak yazılamazsa kutu açık kalır + hata; zorunlu kapanışlarda (odak kaybı, zaman aşımı, fail-open) yine kapanır ve `Log.e` düşer.
+  - Not kaydı sürerken gelen kapatma istekleri yok sayılır (yinelenen yazım / taslak çoğalması olmasın). Kayıt başarısızsa kutu açık, metin ve hata mesajı durur.
+  - Oturum yok / başlık boş: `Başlıksız video.md`, zamansız `- metin`. Başlık var ama konum bilinmiyorsa zaman damgası yok.
+  - Loglar yalnız `Log.w/e`: hata sınıfı adları, "box closed: <neden>", "service gone". Tuş kodu ve metin yok.
+  - Boş Enter taslağı da siler.
+- Cihazda test EDİLMEDİ. Orkestratör kontrol etsin:
+  1. Probe servisini (`dev.swiftnote.probe.keys`) kapat; SwiftNote'u kur, kurulum ekranında 3 izni ver; ekran "AÇIK" göstermeli.
+  2. YouTube'da Ctrl+Shift+N: video durmalı, kutu altta açılmalı, bağlam satırı `▶ Başlık · Kanal @ mm:ss`, tıklamadan yazılabilmeli.
+  3. Enter (Celia IME'de `dispatchKeyEventPreIme` gerçekten yakalıyor mu): kayıt + video devam + pano `mm:ss — metin`; dosya `Video Notları/<Başlık> — <Kanal>.md`. Shift+Enter yeni satır. Esc: kayıtsız kapanır, video devam, sonraki kısayolda taslak geri gelir.
+  4. Kutu açıkken Home / başka uygulama: kutu kapanmalı, video devam ETMEMELİ, taslak kalmalı. Kutu açıkken 2 dk bekle: taslakla kapanır, devam eder.
+  5. MateBridge ön plandayken tuşlar aynen geçmeli; dosya erişimi kapalıyken Enter hata mesajı vermeli ve metin durmalı.
+  - Özellikle bak: kayıttan sonra video gerçekten devam ediyor mu (`finishBox` içindeki `underlyingPkg == YOUTUBE` koşulu yanlış negatif verirse devam etmez; tam ekranda uygulama penceresi türü/katmanı beklenenden farklı olabilir).
 
 ## Açık sorular
