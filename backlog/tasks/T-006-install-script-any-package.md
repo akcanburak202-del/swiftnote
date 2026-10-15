@@ -1,7 +1,7 @@
 ---
 id: T-006
 title: install-apk.sh paket adını APK'dan okusun (probe'lar için)
-status: todo
+status: in-progress
 phase: 0
 owner: android-dev
 depends_on: [T-001]
@@ -35,7 +35,10 @@ Probe APK'ları (`dev.swiftnote.probe.keys`, `.media`, `.storage`) da tablete ya
 
 ## Plan
 
-_(Ajan kodlamadan önce doldurur: adımlar, dokunulacak dosyalar, riskler.)_
+1. `aapt2 dump badging <apk>` (SDK build-tools, en yeni sürüm) ile `package: name='...'` ve `launchable-activity: name='...'` okunur.
+2. Okunamazsa net hatayla çıkılır; `PKG` sabiti kaldırılır.
+3. Başlatma `am start -n PKG/ACTIVITY`; launchable yoksa atlanır ve yazdırılır.
+4. Başlık yorumu güncellenir. Güvenlik mantığına dokunulmaz. Risk: yalnız `bash -n` ile doğrulanır, adb çalıştırılmaz.
 
 ## Devir
 
