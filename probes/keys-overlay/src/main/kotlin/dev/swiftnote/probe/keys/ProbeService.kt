@@ -50,7 +50,7 @@ class ProbeService : AccessibilityService() {
                 windowPkg[id] = pkg
                 // A launcher/MateBridge/any other app appearing closes an open box (drafts kept).
                 if (pkg != ProbeState.YOUTUBE && pkg != packageName && pkg != imePackage()) {
-                    ProbeState.activeBox?.closeAsDraft("window event from $pkg")
+                    closeBoxLater("window event from $pkg")
                 }
             }
         } catch (_: Throwable) {
@@ -109,13 +109,22 @@ class ProbeService : AccessibilityService() {
                 it.recycle()
             }
             windowPkg.keys.retainAll(liveIds)
-            if (ProbeState.activeBox != null) checkUnderlying(infos)
+            if (overlayView != null) checkUnderlying(infos)
             if (focusedId == -1) null else windowPkg[focusedId]
         } catch (t: Throwable) {
             ProbeState.logTransition("focus lookup failed: ${t.javaClass.simpleName}")
             failOpen("focus lookup error")
             null
         }
+    }
+
+    /**
+     * Closing a box writes the draft with a synchronous disk commit. Never do that inline on a fail-open path: the
+     * caller turns the filter off and returns its pass decision first; the write runs afterwards on the main handler.
+     */
+    private fun closeBoxLater(reason: String) {
+        if (ProbeState.activeBox == null) return
+        main.post { ProbeState.activeBox?.closeAsDraft(reason) }
     }
 
     private class WinInfo(val id: Int, val type: Int, val layer: Int)
@@ -135,7 +144,7 @@ class ProbeService : AccessibilityService() {
             break
         }
         if (under != ProbeState.YOUTUBE) {
-            ProbeState.activeBox?.closeAsDraft("underlying app is ${under ?: "unknown"}")
+            closeBoxLater("underlying app is ${under ?: "unknown"}")
         }
     }
 
@@ -157,7 +166,7 @@ class ProbeService : AccessibilityService() {
         setFilter(pkg == ProbeState.YOUTUBE)
         // Focus moved to another known app while a box (any path, also split screen) was up: keep a draft.
         if (pkg != null && pkg != ProbeState.YOUTUBE && pkg != packageName) {
-            ProbeState.activeBox?.closeAsDraft("focus left")
+            closeBoxLater("focus left")
         }
     }
 
@@ -166,7 +175,7 @@ class ProbeService : AccessibilityService() {
         tracker.reset()
         main.removeCallbacks(openRunnable)
         setFilter(false)
-        ProbeState.activeBox?.closeAsDraft("fail-open: $why")
+        closeBoxLater("fail-open: $why")
     }
 
     /**
