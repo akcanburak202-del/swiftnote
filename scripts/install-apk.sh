@@ -25,7 +25,7 @@ esac
 [ -f "$APK" ] || { echo "APK not found: $APK" >&2; exit 1; }
 # Package and launcher activity come from the APK, never guessed: a wrong package would verify and start the wrong app.
 SDK="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
-AAPT2="${AAPT2:-$(ls -d "$SDK"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)}"
+AAPT2="${AAPT2:-$(ls -d "$SDK"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1 || true)}"
 [ -n "$AAPT2" ] && [ -x "$AAPT2" ] || { echo "aapt2 not found under $SDK/build-tools (set AAPT2=/path/to/aapt2)" >&2; exit 1; }
 badging="$("$AAPT2" dump badging "$APK" 2>/dev/null)" || { echo "aapt2 could not read $APK" >&2; exit 1; }
 PKG="$(printf '%s\n' "$badging" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
