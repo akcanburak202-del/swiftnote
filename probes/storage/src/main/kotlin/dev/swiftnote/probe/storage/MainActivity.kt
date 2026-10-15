@@ -53,7 +53,7 @@ class MainActivity : Activity() {
             minLines = 3
         }
         addButton = Button(this).apply { text = "ekle"; setOnClickListener { addNote() } }
-        result = TextView(this).apply { id = 1005; freezesText = true; textSize = 14f; setTextIsSelectable(true) }
+        result = TextView(this).apply { isSaveEnabled = false;textSize = 14f; setTextIsSelectable(true) }
 
         listOf(permission, grantButton, titleField, channelField, timeField, noteField, addButton, result).forEach(root::addView)
         setContentView(ScrollView(this).apply { addView(root) })
