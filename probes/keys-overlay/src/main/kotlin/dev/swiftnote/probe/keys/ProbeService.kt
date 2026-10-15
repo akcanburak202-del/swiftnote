@@ -24,6 +24,9 @@ class ProbeService : AccessibilityService() {
     private var overlayView: View? = null
     private var focusedPkg: String? = null
 
+    /** Window id -> package, learned from TYPE_WINDOW_STATE_CHANGED events. Unknown ids are treated as not YouTube. */
+    private val windowPkg = HashMap<Int, String>()
+
     /** Queued by the shortcut; re-checks that YouTube still has focus when it runs. */
     private val openRunnable = Runnable {
         if (ProbeState.serviceConnected && focusNow() == ProbeState.YOUTUBE) showBox()
@@ -39,6 +42,14 @@ class ProbeService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        try {
+            val id = event?.windowId ?: -1
+            val pkg = event?.packageName?.toString()
+            if (id != -1 && pkg != null && event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                windowPkg[id] = pkg
+            }
+        } catch (_: Throwable) {
+        }
         applyFocus(focusNow())
     }
 
@@ -73,17 +84,25 @@ class ProbeService : AccessibilityService() {
 
     // ---- focus tracking and filter switching -------------------------------------------------------------------
 
-    /** Package of the window with input focus right now, or null if none/unknown (an error fails open). */
+    /**
+     * Package of the window with input focus right now, or null if none/unknown (an error fails open).
+     * Never touches AccessibilityNodeInfo/root: that is a synchronous IPC into the app's UI thread and can block
+     * far longer than the 500 ms key filter timeout. Window id -> package is learned from events (free), and the
+     * focused window id comes from `windows` (system_server only).
+     */
     @Suppress("DEPRECATION")
     private fun focusNow(): String? {
         return try {
             val wins = windows
-            val focused = wins?.firstOrNull { it.isFocused }
-            val root = focused?.root
-            val pkg = root?.packageName?.toString()
-            root?.recycle()
-            wins?.forEach { it.recycle() }
-            pkg
+            var focusedId = -1
+            val liveIds = HashSet<Int>()
+            wins?.forEach {
+                liveIds.add(it.id)
+                if (it.isFocused) focusedId = it.id
+                it.recycle()
+            }
+            windowPkg.keys.retainAll(liveIds)
+            if (focusedId == -1) null else windowPkg[focusedId]
         } catch (t: Throwable) {
             ProbeState.logTransition("focus lookup failed: ${t.javaClass.simpleName}")
             failOpen("focus lookup error")
@@ -101,9 +120,10 @@ class ProbeService : AccessibilityService() {
             main.removeCallbacks(openRunnable)
         }
         setFilter(pkg == ProbeState.YOUTUBE)
-        // The user went to another app while an overlay box was up: keep the text as a draft.
-        val v = overlayView
-        if (v is NoteBox && pkg != null && pkg != ProbeState.YOUTUBE && pkg != packageName) v.closeAsDraft("focus left")
+        // Focus moved to another known app while a box (any path, also split screen) was up: keep a draft.
+        if (pkg != null && pkg != ProbeState.YOUTUBE && pkg != packageName) {
+            ProbeState.activeBox?.closeAsDraft("focus left")
+        }
     }
 
     /** Filter off, key state forgotten, pending open dropped, open box closed as a draft. */
@@ -121,22 +141,33 @@ class ProbeService : AccessibilityService() {
     private fun setFilter(on: Boolean) {
         if (!on) tracker.reset()
         if (on == ProbeState.filterOn && !ProbeState.filterUnknown) return
-        try {
-            val info = serviceInfo ?: throw IllegalStateException("no serviceInfo")
-            info.flags = if (on) {
-                info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
-            } else {
-                info.flags and AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS.inv()
-            }
-            serviceInfo = info
-            ProbeState.filterOn = on
-            ProbeState.filterUnknown = false
-            ProbeState.logTransition("filter ${if (on) "ON" else "OFF"}")
-        } catch (t: Throwable) {
-            ProbeState.filterOn = false
-            ProbeState.filterUnknown = true
-            ProbeState.logTransition("filter switch failed (state unknown): ${t.javaClass.simpleName}")
+        if (trySwitch(on) || trySwitch(on)) return // one immediate retry
+        ProbeState.filterOn = false
+        ProbeState.filterUnknown = true
+        if (on) {
+            setFilter(false) // could not turn it on: make sure it is off
+        } else {
+            // Last resort: the real filter may still be on and we cannot turn it off. Turn the service itself off.
+            ProbeState.logTransition("filter OFF failed twice: disableSelf()")
+            disableSelf()
         }
+    }
+
+    private fun trySwitch(on: Boolean): Boolean = try {
+        val info = serviceInfo ?: throw IllegalStateException("no serviceInfo")
+        info.flags = if (on) {
+            info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+        } else {
+            info.flags and AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS.inv()
+        }
+        serviceInfo = info
+        ProbeState.filterOn = on
+        ProbeState.filterUnknown = false
+        ProbeState.logTransition("filter ${if (on) "ON" else "OFF"}")
+        true
+    } catch (t: Throwable) {
+        ProbeState.logTransition("filter switch failed: ${t.javaClass.simpleName}")
+        false
     }
 
     // ---- key handling -------------------------------------------------------------------------------------------
@@ -189,9 +220,9 @@ class ProbeService : AccessibilityService() {
                 }
             }
         } catch (t: Throwable) {
-            ProbeState.activeBox?.closeAsDraft("open failed")
-            removeOverlay()
             ProbeState.logTransition("open box failed: ${t.javaClass.simpleName}")
+            failOpen("open box failed")
+            removeOverlay()
         }
     }
 

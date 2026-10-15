@@ -12,9 +12,9 @@ class ShortcutTrackerTest {
 
     @Test fun fullPressOpensAndConsumesBothHalves() {
         val t = ShortcutTracker()
-        assertEquals(Decision.CONSUME_AND_OPEN, t.onKey(n, down, cs))
+        assertEquals(Decision.CONSUME, t.onKey(n, down, cs))
         assertEquals(Decision.CONSUME, t.onKey(n, down, cs)) // repeat
-        assertEquals(Decision.CONSUME, t.onKey(n, up, 0)) // Ctrl already released
+        assertEquals(Decision.CONSUME_AND_OPEN, t.onKey(n, up, 0)) // Ctrl already released
         assertEquals(Decision.PASS, t.onKey(n, down, 0))
     }
 

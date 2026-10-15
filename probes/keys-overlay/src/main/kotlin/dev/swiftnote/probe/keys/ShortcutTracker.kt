@@ -15,13 +15,13 @@ class ShortcutTracker {
                 held -> Decision.CONSUME // auto-repeat of the consumed press
                 ShortcutMatcher.matches(keyCode, metaState) -> {
                     held = true
-                    Decision.CONSUME_AND_OPEN
+                    Decision.CONSUME
                 }
                 else -> Decision.PASS
             }
             KeyEvent.ACTION_UP -> if (held) {
                 held = false
-                Decision.CONSUME
+                Decision.CONSUME_AND_OPEN // open only once the consumed pair is complete
             } else {
                 Decision.PASS
             }
