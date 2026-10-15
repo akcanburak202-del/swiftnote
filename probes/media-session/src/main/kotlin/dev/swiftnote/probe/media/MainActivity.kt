@@ -42,6 +42,12 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
+    override fun onDestroy() {
+        // Not in onStop: the user switches to YouTube during the 3 s delay.
+        handler.removeCallbacksAndMessages(null)
+        super.onDestroy()
+    }
+
     override fun onResume() {
         super.onResume()
         refresh()
