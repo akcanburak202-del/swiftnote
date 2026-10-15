@@ -82,6 +82,15 @@ Paylaş → bağlantı ekleme, kısayolu değiştirme, üç parmak kaydırma sor
   - Oturum yok / başlık boş: `Başlıksız video.md`, zamansız `- metin`. Başlık var ama konum bilinmiyorsa zaman damgası yok.
   - Loglar yalnız `Log.w/e`: hata sınıfı adları, "box closed: <neden>", "service gone". Tuş kodu ve metin yok.
   - Boş Enter taslağı da siler.
+- **Codex tur 1 düzeltmeleri** (`./scripts/check.sh` -> ALL OK):
+  1. Yazma sürerken metin dondurulur (`NoteBox.setBusy`, `InputFilter`; odak kalır), sonuçtan sonra yazılan karakter kaybolmaz.
+  2. `DraftStore.save` önbelleği disk başarısız olsa da günceller; sonraki kısayolda metin geri gelir. Yedek yazımı korunur.
+  3. Yazma sürerken gelen zorunlu kapanış (odak kaybı, fail-open) `Session.pendingClose` olarak tutulur; yazma bitince uygulanır, devam ETMEZ. Kayıt başarısızsa metin taslak olur.
+  4. Devam: kutu kalktıktan 150 ms sonra odaklı pencere YouTube ise `play()` (bir kez daha 150 ms sonra denenir). `underlyingPkg` artık devam kararında yok.
+  5. `openBox` diske dokunmaz; taslak önbellekte yoksa kutu boş açılır, io yüklemesi dönünce kullanıcı yazmadıysa doldurulur (`fillDraftIfUntouched`). Taslak yüklenmeden boş Enter/Esc taslağı silmez.
+  6. Temizleme kalıcı: prefs `commit()` başarısızsa boş yedek dosya "temizlendi" işareti olur ve `current()` yedeği prefs'e tercih eder.
+  7. Başka paketin `TYPE_WINDOW_STATE_CHANGED` olayı artık kutuyu doğrudan kapatmaz; yalnız doğrulanmış odak değişimi (IME hariç) ya da altındaki-uygulama kontrolü.
+  - Kullanıcı kararıyla "yalnız oynarken filtre" özelliği EKLENMEDİ; filtre kuralı değişmedi.
 - Cihazda test EDİLMEDİ. Orkestratör kontrol etsin:
   1. Probe servisini (`dev.swiftnote.probe.keys`) kapat; SwiftNote'u kur, kurulum ekranında 3 izni ver; ekran "AÇIK" göstermeli.
   2. YouTube'da Ctrl+Shift+N: video durmalı, kutu altta açılmalı, bağlam satırı `▶ Başlık · Kanal @ mm:ss`, tıklamadan yazılabilmeli.

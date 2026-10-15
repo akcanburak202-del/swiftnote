@@ -6,6 +6,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
+import android.text.InputFilter
 import android.text.InputType
 import android.text.TextUtils
 import android.text.TextWatcher
@@ -79,6 +80,11 @@ class NoteBox(
     private val handler = Handler(Looper.getMainLooper())
     private val idle = Runnable { host.onIdle(text()) }
 
+    /** While a write is in flight the text is frozen (focus stays, so keys still do not leak to YouTube). */
+    private var busy = false
+    private var touched = false
+    private var programmatic = false
+
     init {
         orientation = VERTICAL
         defaultFocusHighlightEnabled = false
@@ -108,6 +114,7 @@ class NoteBox(
             setTextColor(Color.BLACK)
             setText(draft)
             setSelection(text.length)
+            filters = arrayOf(InputFilter { _, _, _, dest, ds, de -> if (busy) dest.subSequence(ds, de) else null })
         }
         addView(edit, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         status.apply {
@@ -119,7 +126,10 @@ class NoteBox(
         // IME text can arrive through the InputConnection without any KeyEvent.
         edit.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = resetTimer()
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (!programmatic) touched = true
+                resetTimer()
+            }
             override fun afterTextChanged(s: Editable?) {}
         })
         resetTimer()
@@ -135,6 +145,23 @@ class NoteBox(
         try {
             context.getSystemService(InputMethodManager::class.java).showSoftInput(edit, InputMethodManager.SHOW_IMPLICIT)
         } catch (_: Throwable) {
+        }
+    }
+
+    /** Freezes or unfreezes the text while a save / draft write is in flight. */
+    fun setBusy(b: Boolean) {
+        busy = b
+    }
+
+    /** Puts a late-loaded draft into the field, unless the user already typed something. */
+    fun fillDraftIfUntouched(draft: String) {
+        if (touched || draft.isEmpty() || edit.text.isNotEmpty()) return
+        programmatic = true
+        try {
+            edit.setText(draft)
+            edit.setSelection(edit.text.length)
+        } finally {
+            programmatic = false
         }
     }
 

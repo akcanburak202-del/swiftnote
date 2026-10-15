@@ -59,6 +59,9 @@ class SwiftNoteService : AccessibilityService() {
 
         /** Set on the io thread once the note is on disk. */
         @Volatile var noteWritten = false
+
+        /** A forced no-resume close (focus lost, fail-open) that arrived while busy; applied when the write ends. */
+        var pendingClose: String? = null
     }
 
     private var box: NoteBox? = null
@@ -94,8 +97,6 @@ class SwiftNoteService : AccessibilityService() {
             val pkg = event?.packageName?.toString()
             if (id != -1 && pkg != null && event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
                 windowPkg[id] = pkg
-                // Another app's window appearing closes an open box (draft kept).
-                if (pkg != YOUTUBE && pkg != packageName && pkg != imePackage()) closeBoxLater("window event")
             }
         } catch (_: Throwable) {
         }
@@ -198,7 +199,7 @@ class SwiftNoteService : AccessibilityService() {
             main.removeCallbacks(openRunnable)
         }
         setFilter(pkg == YOUTUBE)
-        if (pkg != null && pkg != YOUTUBE && pkg != packageName) closeBoxLater("focus left")
+        if (pkg != null && pkg != YOUTUBE && pkg != packageName && pkg != imePackage()) closeBoxLater("focus left")
     }
 
     /** Filter off, key state forgotten, pending open dropped, open box closed as a draft. Playback is left alone. */
@@ -294,10 +295,21 @@ class SwiftNoteService : AccessibilityService() {
             if (time != null) append(" @ ").append(time)
         }
         try {
-            val b = NoteBox(this, boxHost, header, drafts.current())
+            // Never read the disk here: if the draft is not in memory yet, it is filled in when the io load returns.
+            val cached = drafts.cached()
+            val b = NoteBox(this, boxHost, header, cached ?: "")
             addOverlay(b)
             box = b
             session = s
+            if (cached == null) {
+                try {
+                    io.execute {
+                        val d = drafts.current()
+                        main.post { if (session === s) box?.fillDraftIfUntouched(d) }
+                    }
+                } catch (_: RejectedExecutionException) {
+                }
+            }
         } catch (t: Throwable) {
             Log.e(TAG, "open box failed: ${t.javaClass.simpleName}")
             removeOverlay()
@@ -329,6 +341,7 @@ class SwiftNoteService : AccessibilityService() {
             return
         }
         s.busy = true
+        box?.setBusy(true)
         val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
         try {
             io.execute {
@@ -341,6 +354,7 @@ class SwiftNoteService : AccessibilityService() {
             }
         } catch (_: RejectedExecutionException) {
             s.busy = false
+            box?.setBusy(false)
         }
     }
 
@@ -350,6 +364,13 @@ class SwiftNoteService : AccessibilityService() {
         if (r.isFailure) {
             Log.e(TAG, "note write failed: ${r.exceptionOrNull()?.javaClass?.simpleName}")
             s.busy = false
+            b.setBusy(false)
+            val pending = s.pendingClose
+            if (pending != null) {
+                // A forced close arrived during the write: the note is not on disk, so the text becomes the draft.
+                closeWithDraft(b.text(), pending, resume = false, force = true)
+                return
+            }
             b.showError(
                 if (!Environment.isExternalStorageManager()) "Kayıt başarısız: tüm dosyalara erişim izni yok. Metin duruyor."
                 else "Kayıt başarısız (${r.exceptionOrNull()?.javaClass?.simpleName}). Metin duruyor, Enter ile tekrar dene.",
@@ -365,7 +386,7 @@ class SwiftNoteService : AccessibilityService() {
         r.getOrNull()?.name?.let {
             getSharedPreferences("app", Context.MODE_PRIVATE).edit().putString(KEY_LAST_FILE, it).apply()
         }
-        finishBox(s, resume = true, reason = "saved")
+        finishBox(s, resume = s.pendingClose == null, reason = "saved")
     }
 
     /**
@@ -374,8 +395,18 @@ class SwiftNoteService : AccessibilityService() {
      */
     private fun closeWithDraft(text: String, reason: String, resume: Boolean, force: Boolean) {
         val s = session ?: return
-        if (s.busy) return
+        if (s.busy) {
+            // Remember a forced no-resume close; it is applied when the write in flight ends.
+            if (!resume && s.pendingClose == null) s.pendingClose = reason
+            return
+        }
+        // The draft is not loaded yet and the box is empty: writing "" would erase a draft nobody has seen.
+        if (text.isBlank() && drafts.cached() == null) {
+            finishBox(s, resume, reason)
+            return
+        }
         s.busy = true
+        box?.setBusy(true)
         val ok = try {
             io.execute {
                 val stored = drafts.save(text)
@@ -390,26 +421,36 @@ class SwiftNoteService : AccessibilityService() {
 
     private fun onDraftResult(s: Session, stored: Boolean, resume: Boolean, force: Boolean, reason: String) {
         if (session !== s) return
-        if (!stored && !force) {
+        val pending = s.pendingClose
+        if (!stored && !force && pending == null) {
             s.busy = false
+            box?.setBusy(false)
             box?.showError("Taslak yazılamadı. Metin duruyor.")
             return
         }
-        if (!stored) Log.e(TAG, "draft not stored on forced close")
-        finishBox(s, resume, reason)
+        // On a failed write the text still sits in DraftStore's memory cache and comes back on the next shortcut.
+        if (!stored) Log.e(TAG, "draft not on disk at close")
+        finishBox(s, resume && pending == null, pending ?: reason)
     }
 
-    /** Removes the box, then resumes playback if we paused it and YouTube is still the app underneath. */
+    /** Removes the box, then resumes playback if we paused it and YouTube verifiably has input focus. */
     private fun finishBox(s: Session, resume: Boolean, reason: String) {
-        val resumeNow = resume && s.pausedByUs && try {
-            underlyingPkg(scanWindows().infos) == YOUTUBE
-        } catch (_: Throwable) {
-            false
-        }
         removeOverlay()
         Log.w(TAG, "box closed: $reason")
-        if (resumeNow) media.resume()
+        if (resume && s.pausedByUs) scheduleResume(0)
         applyFocus(focusNow())
+    }
+
+    /** Right after the box is removed focus may not have moved back yet: check after 150 ms, once more if needed. */
+    private fun scheduleResume(attempt: Int) {
+        main.postDelayed({
+            if (down || box != null) return@postDelayed
+            if (focusNow() == YOUTUBE) {
+                media.resume()
+            } else if (attempt < 1) {
+                scheduleResume(attempt + 1)
+            }
+        }, 150L)
     }
 
     private fun addOverlay(view: NoteBox) {

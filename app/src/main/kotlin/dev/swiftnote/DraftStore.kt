@@ -2,11 +2,14 @@ package dev.swiftnote
 
 import android.content.Context
 import java.io.File
+import java.io.FileOutputStream
 
 /**
  * The unsaved draft. SharedPreferences with a synchronous commit(); if that fails, a backup file in filesDir.
- * [save] and the first [current] touch the disk: call them off the main thread (or at shutdown only).
- * The text is never logged.
+ * The backup file is authoritative whenever it exists: an empty file is a durable "cleared" marker that wins over a
+ * stale prefs value. The in-memory cache is always updated, even when no disk write worked, so the text still comes
+ * back on the next shortcut. [save] and the first [current] touch the disk: call them off the main thread
+ * (or at shutdown only); the main thread may use [cached]. The text is never logged.
  */
 class DraftStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("draft", Context.MODE_PRIVATE)
@@ -14,49 +17,45 @@ class DraftStore(context: Context) {
 
     @Volatile private var cache: String? = null
 
-    /** The draft, from memory once loaded. Prefs first, then the backup file. */
+    /** The draft if it is already in memory, else null (never reads the disk). */
+    fun cached(): String? = cache
+
+    /** The draft, from memory once loaded; the first call reads the disk. */
     fun current(): String {
         cache?.let { return it }
-        // The backup exists only when the last prefs commit failed, so it is the newer one.
-        val text = readBackup().ifEmpty { prefs.getString(KEY, "") ?: "" }
-        cache = text
-        return text
+        val text = try {
+            if (backup.exists()) backup.readText(Charsets.UTF_8) else prefs.getString(KEY, "") ?: ""
+        } catch (_: Throwable) {
+            prefs.getString(KEY, "") ?: ""
+        }
+        // A concurrent save() may have filled the cache meanwhile: it wins.
+        if (cache == null) cache = text
+        return cache ?: text
     }
 
-    /** Stores [text] (blank clears the draft). True when it is on disk somewhere. */
+    /** Stores [text] (blank clears the draft). True when it is durable on disk; the cache is updated either way. */
     fun save(text: String): Boolean {
         val value = if (text.isBlank()) "" else text
+        cache = value
         val ok = try {
             prefs.edit().putString(KEY, value).commit()
         } catch (_: Throwable) {
             false
         }
-        val stored = if (ok) {
-            runCatching { backup.delete() }
-            true
-        } else {
-            writeBackup(value)
+        if (ok) {
+            // The backup would shadow the fresh prefs value. If it cannot be removed, overwrite it with the value.
+            if (backup.exists() && !runCatching { backup.delete() }.getOrDefault(false)) return writeBackup(value)
+            return true
         }
-        if (stored) cache = value
-        return stored
-    }
-
-    private fun readBackup(): String = try {
-        if (backup.isFile) backup.readText(Charsets.UTF_8) else ""
-    } catch (_: Throwable) {
-        ""
+        return writeBackup(value)
     }
 
     private fun writeBackup(value: String): Boolean = try {
-        if (value.isEmpty()) {
-            !backup.exists() || backup.delete()
-        } else {
-            java.io.FileOutputStream(backup).use { out ->
-                out.write(value.toByteArray(Charsets.UTF_8))
-                out.fd.sync()
-            }
-            true
+        FileOutputStream(backup).use { out ->
+            out.write(value.toByteArray(Charsets.UTF_8))
+            out.fd.sync()
         }
+        true
     } catch (_: Throwable) {
         false
     }
