@@ -33,3 +33,6 @@ Codex'in probe'larda bulduğu, probe için reddedilen ama ürün için geçerli 
 - **Servis kapanırken taslak yazılamazsa** yedek konuma yazılır; metin kaybolmadan kutu kaldırılmaz (T-002, Codex edbb150 #1).
 - **Tuş yolunda uygulama UI iş parçacığına senkron sorgu yok** (`getRoot()` vb.); odak `windowId → paket` önbelleği + `getWindows()` ile (T-002, Codex edbb150 #2).
 - Dosya adı tamamı ≤ 255 UTF-8 bayt (T-004).
+- **`getWindows()` önbellek yarışı:** odak değişiminden hemen sonraki tuş eski odağa göre değerlendirilebilir; YouTube dışındaki tuş kodu hiçbir yere yazılmaz, kısayol tüketimi bu yarışa göre değerlendirilir (T-002, Codex 703e7b3 #1; cihaz ölçümü).
+- **Kutu kapanışı doğrulanmış odak değişimine dayanır**, başka paketin pencere olayına değil (T-002, Codex afdd63d #3).
+- **Filtre her zaman diskten önce kapanır;** tuş callback'inde disk beklenmez (T-002, Codex afdd63d #1).
