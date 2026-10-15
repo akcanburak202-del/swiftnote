@@ -59,3 +59,8 @@ Kaynak: `~/Desktop/matebridge/docs/NOTES.md` ve kararlar (aynı tablet, cihazda 
 - Build `0ad6f18` (`daily`), `./scripts/install-apk.sh`; önce `dev.swiftnote.probe.keys` ve `dev.swiftnote.probe.storage` kaldırıldı (`adb uninstall`), açık erişilebilirlik servisi kalmadı.
 - Kullanıcı: "Her şey çalışıyor" — kısayol, durdur/devam, kutu, Enter/Shift+Enter (`dispatchKeyEventPreIme` Celia'dan önce yakalıyor), Esc taslağı, dosya ve pano.
 - Sorun: YouTube'da **Ctrl** tek başına YouTube'un kendi klavye kısayolu panelini açıyor (arka plan hafif kararıyor), herhangi bir tuş kapatıyor. Ctrl+Shift+N'de N tüketildiği için YouTube başka tuş görmüyor; panel kutu kapandıktan sonra da açık kalıyor ve panel açıkken kısayol videoyu durdurmuyor/başlatmıyor. **Alt** YouTube'da hiçbir şey tetiklemiyor → kısayol Alt+N (ADR 0002, T-008).
+
+## 2026-10-15 — T-008: Alt+N (doğrulandı, cihazda)
+
+- Build `394525a` (`daily`), `./scripts/install-apk.sh` (`install -r`, onay yok; ekran uykudayken ilk deneme zaman aşımına uğradı, uyandırınca geçti).
+- Kullanıcı: Alt+N YouTube'da çalışıyor, YouTube kısayol paneli açılmıyor ("güzel çalışıyor"). Aynı videodaki notlar aynı dosyaya gidiyor.
