@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ShortcutTrackerTest {
-    private val cs = KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON
+    private val cs = KeyEvent.META_ALT_ON
     private val n = KeyEvent.KEYCODE_N
     private val down = KeyEvent.ACTION_DOWN
     private val up = KeyEvent.ACTION_UP
@@ -14,7 +14,7 @@ class ShortcutTrackerTest {
         val t = ShortcutTracker()
         assertEquals(Decision.CONSUME, t.onKey(n, down, cs, 0))
         assertEquals(Decision.CONSUME, t.onKey(n, down, cs, 1)) // repeat
-        assertEquals(Decision.CONSUME_AND_OPEN, t.onKey(n, up, 0, 0)) // Ctrl already released
+        assertEquals(Decision.CONSUME_AND_OPEN, t.onKey(n, up, 0, 0)) // Alt already released
         assertEquals(Decision.PASS, t.onKey(n, down, 0, 0))
     }
 
@@ -33,7 +33,7 @@ class ShortcutTrackerTest {
     @Test fun otherKeysAndPlainNPass() {
         val t = ShortcutTracker()
         assertEquals(Decision.PASS, t.onKey(KeyEvent.KEYCODE_A, down, cs, 0))
-        assertEquals(Decision.PASS, t.onKey(n, down, KeyEvent.META_CTRL_ON, 0))
+        assertEquals(Decision.PASS, t.onKey(n, down, KeyEvent.META_SHIFT_ON, 0))
     }
 
     @Test fun repeatDownGainingModifiersPasses() {

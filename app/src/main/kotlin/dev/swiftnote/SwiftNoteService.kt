@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * The shortcut service. The key filter is off by default and on only while a YouTube window has input focus; only the
- * exact Ctrl+Shift+N down/up pair is consumed, every error fails open (AGENTS.md rule 1). Key codes and note text are
+ * exact Alt+N down/up pair is consumed, every error fails open (AGENTS.md rule 1). Key codes and note text are
  * never logged. Disk work runs on [io]; the key callback never waits for it.
  */
 class SwiftNoteService : AccessibilityService() {
