@@ -1,7 +1,7 @@
 ---
 id: T-003
 title: "Probe B: YouTube medya oturumu ve paylaşım bağlantısı"
-status: in-progress
+status: review
 phase: 0
 owner: android-dev
 depends_on: [T-001]
@@ -46,9 +46,9 @@ YouTube'un medya oturumu üzerinden videoyu durdurup başlatabildiğimizi ve not
 
 ## Devir
 
-- **Commit:**
-- **Dokunulan dosyalar:**
-- **Verify çıktısı (son satırlar):**
-- **Varsayımlar:**
-- **Test edilmeyenler / cihazda doğrulanacaklar:**
-- **Açık sorular:**
+- **Commit:** (git log'daki son `T-003:` commit'i)
+- **Dokunulan dosyalar:** `probes/media-session/**` (settings/build.gradle.kts, manifest, MainActivity, ShareActivity, ProbeListener, Pure.kt, PureTest.kt) ve bu kart.
+- **Verify çıktısı (son satırlar):** `./gradlew -p probes/media-session assembleDebug testDebugUnitTest` -> `BUILD SUCCESSFUL in 8s, 40 actionable tasks: 40 executed` (JAVA_HOME=Android Studio JBR).
+- **Varsayımlar:** ham `position` ile `lastPositionUpdateTime`+hız ile tahmin edilen konum ikisi de gösterilir; YouTube paketi `com.google.android.youtube`. Yedek düğmeler 3 sn gecikmeli (YouTube'a geçmek için). Video kimliği yalnız paylaşılan metinden (youtu.be, watch?v=, shorts, embed, live) çözülür; MEDIA_ID için yalnızca "11 karakterlik kimlik mi" bayrağı gösterilir.
+- **Test edilmeyenler / cihazda doğrulanacaklar:** hepsi cihazda (adb'e dokunulmadı). Bildirim erişimi "Probe Media session access" için verilmeli; sonra kartın "Cihazda" listesi (dumpsys media_session, TITLE/ARTIST/MEDIA_ID, durdur/devam ve konum ±1 sn, reklam, Paylaş menüsü).
+- **Açık sorular:** yok.
