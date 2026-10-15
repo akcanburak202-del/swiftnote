@@ -9,6 +9,8 @@
 # Nothing else on an AppGallery screen is ever tapped.
 #
 # Usage: scripts/install-apk.sh [--debug | path/to/app.apk]
+#   e.g. a probe: scripts/install-apk.sh probes/storage/app/build/outputs/apk/debug/app-debug.apk
+#   The package name and launchable activity are read from the APK itself (aapt2 from the SDK build-tools).
 #   default: the non-debuggable "daily" APK (ADR 0003); --debug installs the debug APK (run-as, diagnostics).
 #   Both are signed with the debug key, so either updates the other in place with `adb install -r -d`.
 set -euo pipefail
@@ -20,14 +22,22 @@ case "${1:-}" in
   "") APK="$OUT/daily/app-daily.apk" ;;
   *) APK="$1" ;;
 esac
-PKG="dev.swiftnote"
+[ -f "$APK" ] || { echo "APK not found: $APK" >&2; exit 1; }
+# Package and launcher activity come from the APK, never guessed: a wrong package would verify and start the wrong app.
+SDK="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+AAPT2="${AAPT2:-$(ls -d "$SDK"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1 || true)}"
+[ -n "$AAPT2" ] && [ -x "$AAPT2" ] || { echo "aapt2 not found under $SDK/build-tools (set AAPT2=/path/to/aapt2)" >&2; exit 1; }
+badging="$("$AAPT2" dump badging "$APK" 2>/dev/null)" || { echo "aapt2 could not read $APK" >&2; exit 1; }
+PKG="$(printf '%s\n' "$badging" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
+[ -n "$PKG" ] || { echo "could not read the package name from $APK" >&2; exit 1; }
+LAUNCH_ACTIVITY="$(printf '%s\n' "$badging" | sed -n "s/^launchable-activity: name='\([^']*\)'.*/\1/p" | head -1)"
+echo "package $PKG, launcher activity ${LAUNCH_ACTIVITY:-none}"
 # Never fall back to an adb on PATH: a different adb version restarts the running server and drops MateBridge's
 # `adb reverse` tunnels (AGENTS.md rule 4). $ADB, else the SDK's platform-tools.
 ADB="${ADB:-${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb}"
 [ -x "$ADB" ] || { echo "adb not found or not executable: $ADB (set ADB=/path/to/adb)" >&2; exit 1; }
 TIMEOUT_S="${INSTALL_TIMEOUT_S:-180}"
 
-[ -f "$APK" ] || { echo "APK not found: $APK" >&2; exit 1; }
 "$ADB" get-state >/dev/null 2>&1 || { echo "no device (adb get-state failed)" >&2; exit 1; }
 # Only the HUAWEI tablet: another Android device on the cable (e.g. the user's phone) must never get the APK.
 brand="$("$ADB" shell getprop ro.product.brand | tr -d '\r')"
@@ -119,5 +129,9 @@ if [ "$after" = "$before" ]; then
   exit 1
 fi
 echo "installed: lastUpdateTime $before -> $after"
-"$ADB" shell am start -n "$PKG/.MainActivity" >/dev/null
-echo "started $PKG"
+if [ -n "$LAUNCH_ACTIVITY" ]; then
+  "$ADB" shell am start -n "$PKG/$LAUNCH_ACTIVITY" >/dev/null
+  echo "started $PKG/$LAUNCH_ACTIVITY"
+else
+  echo "no launchable activity in the APK; not starting $PKG"
+fi
