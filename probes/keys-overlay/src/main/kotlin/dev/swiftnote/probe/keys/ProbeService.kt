@@ -1,0 +1,302 @@
+package dev.swiftnote.probe.keys
+
+import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.Intent
+import android.graphics.PixelFormat
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
+import android.view.Gravity
+import android.view.KeyEvent
+import android.view.View
+import android.view.WindowManager
+import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityWindowInfo
+import android.widget.Toast
+
+/**
+ * Probe service. The key filter is off by default and on only while a YouTube window has input focus.
+ * Only the exact Ctrl+Shift+N down/up pair is consumed. Every error fails open.
+ */
+class ProbeService : AccessibilityService() {
+    private val main = Handler(Looper.getMainLooper())
+    private val tracker = ShortcutTracker()
+    private var overlayView: View? = null
+    private var focusedPkg: String? = null
+
+    /** Window id -> package, learned from TYPE_WINDOW_STATE_CHANGED events. Unknown ids are treated as not YouTube. */
+    private val windowPkg = HashMap<Int, String>()
+
+    /** Queued by the shortcut; re-checks that YouTube still has focus when it runs. */
+    private val openRunnable = Runnable {
+        if (ProbeState.serviceConnected && focusNow() == ProbeState.YOUTUBE) showBox()
+    }
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        ProbeState.service = this
+        ProbeState.serviceConnected = true
+        setFilter(false)
+        ProbeState.logTransition("service connected")
+        applyFocus(focusNow())
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        try {
+            val id = event?.windowId ?: -1
+            val pkg = event?.packageName?.toString()
+            if (id != -1 && pkg != null && event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                windowPkg[id] = pkg
+                // A launcher/MateBridge/any other app appearing closes an open box (drafts kept).
+                if (pkg != ProbeState.YOUTUBE && pkg != packageName && pkg != imePackage()) {
+                    closeBoxLater("window event from $pkg")
+                }
+            }
+        } catch (_: Throwable) {
+        }
+        applyFocus(focusNow())
+    }
+
+    override fun onInterrupt() {
+        failOpen("interrupt")
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        shutdown("unbind")
+        return super.onUnbind(intent)
+    }
+
+    override fun onDestroy() {
+        shutdown("destroy")
+        super.onDestroy()
+    }
+
+    private fun shutdown(why: String) {
+        main.removeCallbacks(openRunnable)
+        tracker.reset()
+        setFilter(false)
+        // Draft first, then the view goes away.
+        (overlayView as? NoteBox)?.closeAsDraft("service $why")
+        ProbeState.activeBox?.closeAsDraft("service $why")
+        removeOverlay()
+        ProbeState.boxOpen = false
+        ProbeState.activeBox = null
+        ProbeState.serviceConnected = false
+        ProbeState.service = null
+        ProbeState.logTransition("service gone: $why")
+    }
+
+    // ---- focus tracking and filter switching -------------------------------------------------------------------
+
+    /**
+     * Package of the window with input focus right now, or null if none/unknown (an error fails open).
+     * Never touches AccessibilityNodeInfo/root: that is a synchronous IPC into the app's UI thread and can block
+     * far longer than the 500 ms key filter timeout. Window id -> package is learned from events (free), and the
+     * focused window id comes from `windows` (system_server only).
+     */
+    @Suppress("DEPRECATION")
+    private fun focusNow(): String? {
+        return try {
+            val wins = windows
+            var focusedId = -1
+            val liveIds = HashSet<Int>()
+            val infos = ArrayList<WinInfo>()
+            wins?.forEach {
+                liveIds.add(it.id)
+                if (it.isFocused) focusedId = it.id
+                infos.add(WinInfo(it.id, it.type, it.layer))
+                it.recycle()
+            }
+            windowPkg.keys.retainAll(liveIds)
+            if (overlayView != null) checkUnderlying(infos)
+            if (focusedId == -1) null else windowPkg[focusedId]
+        } catch (t: Throwable) {
+            ProbeState.logTransition("focus lookup failed: ${t.javaClass.simpleName}")
+            failOpen("focus lookup error")
+            null
+        }
+    }
+
+    /**
+     * Closing a box writes the draft with a synchronous disk commit. Never do that inline on a fail-open path: the
+     * caller turns the filter off and returns its pass decision first; the write runs afterwards on the main handler.
+     */
+    private fun closeBoxLater(reason: String) {
+        if (ProbeState.activeBox == null) return
+        main.post { ProbeState.activeBox?.closeAsDraft(reason) }
+    }
+
+    private class WinInfo(val id: Int, val type: Int, val layer: Int)
+
+    /**
+     * An A/B box is its own focusable window and can outlive a Home press. While a box is open, the topmost real
+     * application window (skipping our own, IME, accessibility overlay and system windows) must be known YouTube;
+     * anything else, or unknown, closes the box as a draft.
+     */
+    private fun checkUnderlying(infos: List<WinInfo>) {
+        var under: String? = null
+        for (w in infos.sortedByDescending { it.layer }) {
+            if (w.type != AccessibilityWindowInfo.TYPE_APPLICATION) continue
+            val pkg = windowPkg[w.id]
+            if (pkg == packageName) continue
+            under = pkg
+            break
+        }
+        if (under != ProbeState.YOUTUBE) {
+            closeBoxLater("underlying app is ${under ?: "unknown"}")
+        }
+    }
+
+    private fun imePackage(): String? = try {
+        Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)?.substringBefore('/')
+    } catch (_: Throwable) {
+        null
+    }
+
+    private fun applyFocus(pkg: String?) {
+        if (pkg != focusedPkg) {
+            focusedPkg = pkg
+            ProbeState.focusedPackage = pkg
+            // Package names are allowed in logs (rule 3 forbids key codes, not packages).
+            ProbeState.logTransition("focus -> ${pkg ?: "none"}")
+            tracker.reset()
+            main.removeCallbacks(openRunnable)
+        }
+        setFilter(pkg == ProbeState.YOUTUBE)
+        // Focus moved to another known app while a box (any path, also split screen) was up: keep a draft.
+        if (pkg != null && pkg != ProbeState.YOUTUBE && pkg != packageName) {
+            closeBoxLater("focus left")
+        }
+    }
+
+    /** Filter off, key state forgotten, pending open dropped, open box closed as a draft. */
+    private fun failOpen(why: String) {
+        tracker.reset()
+        main.removeCallbacks(openRunnable)
+        setFilter(false)
+        closeBoxLater("fail-open: $why")
+    }
+
+    /**
+     * Switches the key filter. A failed switch is never recorded as a verified state: the state becomes unknown
+     * and the next call retries even if the wanted value equals the last recorded one.
+     */
+    private fun setFilter(on: Boolean) {
+        if (!on) tracker.reset()
+        if (on == ProbeState.filterOn && !ProbeState.filterUnknown) return
+        if (trySwitch(on) || trySwitch(on)) return // one immediate retry
+        ProbeState.filterOn = false
+        ProbeState.filterUnknown = true
+        if (on) {
+            setFilter(false) // could not turn it on: make sure it is off
+        } else {
+            // Last resort: the real filter may still be on and we cannot turn it off. Turn the service itself off.
+            ProbeState.logTransition("filter OFF failed twice: disableSelf()")
+            disableSelf()
+        }
+    }
+
+    private fun trySwitch(on: Boolean): Boolean = try {
+        val info = serviceInfo ?: throw IllegalStateException("no serviceInfo")
+        info.flags = if (on) {
+            info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+        } else {
+            info.flags and AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS.inv()
+        }
+        serviceInfo = info
+        ProbeState.filterOn = on
+        ProbeState.filterUnknown = false
+        ProbeState.logTransition("filter ${if (on) "ON" else "OFF"}")
+        true
+    } catch (t: Throwable) {
+        ProbeState.logTransition("filter switch failed: ${t.javaClass.simpleName}")
+        false
+    }
+
+    // ---- key handling -------------------------------------------------------------------------------------------
+
+    override fun onKeyEvent(event: KeyEvent): Boolean {
+        try {
+            // Never trust the cached focus: re-check synchronously before logging or consuming anything.
+            val pkg = focusNow()
+            applyFocus(pkg)
+            if (pkg != ProbeState.YOUTUBE) {
+                // Outside YouTube (or unknown): count only, never the key code. Pass through.
+                ProbeState.nonYoutubeKeyEvents++
+                return false
+            }
+            ProbeState.logYoutubeKey(event.keyCode, event.action, event.metaState, event.repeatCount)
+            return when (tracker.onKey(event.keyCode, event.action, event.metaState, event.repeatCount)) {
+                Decision.PASS -> false
+                Decision.CONSUME -> true
+                Decision.CONSUME_AND_OPEN -> {
+                    main.post(openRunnable)
+                    true
+                }
+            }
+        } catch (t: Throwable) {
+            ProbeState.logTransition("onKeyEvent error: ${t.javaClass.simpleName}")
+            failOpen("onKeyEvent error")
+            return false
+        }
+    }
+
+    // ---- overlay ------------------------------------------------------------------------------------------------
+
+    private fun showBox() {
+        if (ProbeState.boxOpen) return
+        val path = ProbeState.path(this)
+        ProbeState.logTransition("shortcut -> open box, path $path")
+        try {
+            when (path) {
+                OverlayPath.A -> addOverlay(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY)
+                OverlayPath.B -> {
+                    if (!Settings.canDrawOverlays(this)) {
+                        Toast.makeText(this, "Path B needs the overlay permission", Toast.LENGTH_LONG).show()
+                        ProbeState.logTransition("path B: overlay permission missing")
+                        return
+                    }
+                    addOverlay(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+                }
+                OverlayPath.C -> {
+                    startActivity(Intent(this, NoteActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+            }
+        } catch (t: Throwable) {
+            ProbeState.logTransition("open box failed: ${t.javaClass.simpleName}")
+            failOpen("open box failed")
+            removeOverlay()
+        }
+    }
+
+    private fun addOverlay(type: Int) {
+        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        val box = NoteBox(this) { removeOverlay() }
+        val d = resources.displayMetrics.density
+        // No FLAG_NOT_FOCUSABLE: the box must take keyboard input without a tap. Touches outside go to YouTube.
+        val lp = WindowManager.LayoutParams(
+            (560 * d).toInt(),
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            type,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            PixelFormat.TRANSLUCENT,
+        )
+        lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+        lp.y = (48 * d).toInt()
+        lp.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE or
+            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
+        wm.addView(box, lp)
+        overlayView = box
+        box.post { box.focusEditor() }
+    }
+
+    private fun removeOverlay() {
+        val v = overlayView ?: return
+        overlayView = null
+        try {
+            (getSystemService(WINDOW_SERVICE) as WindowManager).removeView(v)
+        } catch (_: Throwable) {
+        }
+    }
+}

@@ -1,7 +1,7 @@
 ---
 id: T-002
 title: "Probe A: kısayol yakalama ve odaklı not kutusu"
-status: todo
+status: review
 phase: 0
 owner: android-dev
 depends_on: [T-001]
@@ -47,13 +47,22 @@ Projenin en büyük iki belirsizliğini cihazda kapatacak bir araç üretmek: (1
 
 ## Plan
 
-_(Ajan doldurur.)_
+- Bağımsız Gradle projesi `probes/keys-overlay/` (settings + build.gradle.kts, AGP 9.4.1 yerleşik Kotlin, compileSdk 37, min/target 31, bağımlılık yok, test için junit).
+- `ShortcutMatcher` (saf Kotlin, JVM testli): tam Ctrl+Shift+N tespiti. `ProbeState`: süreç içi durum (filtre, yol, son 20 YouTube tuşu, taslak).
+- `ProbeService` (AccessibilityService): XML'de canRequestFilterKeyEvents + canRetrieveWindowContent + flagRetrieveInteractiveWindows; filtre başlangıçta kapalı. Pencere olaylarında `getWindows()` ile girdi odaklı pencerenin paketi bulunur; YouTube ise `setServiceInfo` ile flag açılır, değilse kapanır (zaman damgalı log). `onKeyEvent` try/catch: hata -> false + filtre kapat.
+- `NoteBox` (FrameLayout + EditText): Enter kapat, Shift+Enter satır, Esc/BACK iptal (taslak), 60 sn hareketsizlik zaman aşımı. A/B `WindowManager` ile (NOT_FOCUSABLE yok), C `NoteActivity` (saydam).
+- `MainActivity`: durum, yol seçimi, son 20 tuş, izin/ayar kısayolları, "servisi kapat".
 
 ## Devir
 
-- **Commit:**
-- **Dokunulan dosyalar:**
-- **Verify çıktısı (son satırlar):**
-- **Varsayımlar:**
-- **Test edilmeyenler / cihazda doğrulanacaklar:**
-- **Açık sorular:**
+- **Commit:** `git log` içindeki `T-002: implement keys-overlay probe` commit'i
+- **Dokunulan dosyalar:** `probes/keys-overlay/` (settings/build/gradle.properties, manifest, accessibility config, strings, `ShortcutMatcher`(+test), `ProbeState`, `ProbeService`, `NoteBox`, `NoteActivity`, `MainActivity`), bu kart.
+- **Verify çıktısı (son satırlar):** `./gradlew -p probes/keys-overlay assembleDebug testDebugUnitTest` -> `BUILD SUCCESSFUL in 1s / 40 actionable tasks: 12 executed, 28 up-to-date`
+- **Varsayımlar:** Girdi odağı = `AccessibilityWindowInfo.isFocused` + `root.packageName` (root null ise odak "yok", filtre kapalı). Kutu açıkken (A/B) odak kendi paketimizde olduğundan filtre kapalı; başka uygulamaya odak giderse kutu taslakla kapanır. "Enter = kapat" probe'da yalnız taslağı siler, dosya yazmaz. Taslak SharedPreferences'ta (`commit()`); yazma başarısızsa kutu açık kalır. C yolunda Activity durunca (PiP/Son uygulamalar) taslakla kapanır. Yol A/B/C ana ekrandaki radyo düğmesiyle seçilir. YouTube dışında yalnız olay sayısı tutulur; odaktaki paket adı loglanır (tuş kodu değil).
+- **Test edilmeyenler / cihazda doğrulanacaklar:** Kartın "Cihazda" listesinin tamamı. Özellikle: (1) `setServiceInfo` ile çalışma anında flag açıp kapamak HarmonyOS'ta filtreyi gerçekten değiştiriyor mu (log `filter ON/OFF` + MateBridge'de normal yazma); (2) `isFocused` pencere + `root` YouTube için paket adını veriyor mu, bölünmüş ekranda doğru pencere mi; (3) B için overlay izni (ana ekran düğmesi); (4) C'de servisten `startActivity` arka plan kısıtına takılıyor mu; (5) EditText tıklamadan odak alıyor mu, hangi IME.
+- **Codex düzeltmeleri (2. commit, 9 madde):** her tuşta odak senkron yeniden kontrol edilir (YouTube değilse log yok, geçir); `ShortcutTracker` (JVM testli) filtre kapanınca/odak değişince sıfırlanır, UP yalnız tüketilmiş DOWN ile eşleşir; başarısız filtre geçişi "bilinmiyor" olur ve yeniden denenir (ana ekranda görünür); shutdown ve fail-open (odak/tuş hatası) açık kutuyu önce taslak olarak kapatır; Enter yazıyı "last saved note"a (prefs, `commit()`) yazar, sonra taslağı siler, ana ekranda gösterilir; `closeAsDraft` başarıyı döner, NoteActivity yalnız yazıldıysa finish eder; bekleyen açma işi çalışırken servis/odak yeniden doğrulanır, odak değişiminde ve kapanışta iptal edilir; metin değişimi 60 sn sayacını sıfırlar. Verify: `BUILD SUCCESSFUL in 4s` (assembleDebug testDebugUnitTest).
+- **Codex 2. tur düzeltmeleri:** (#2) Tuş yolunda `root`/AccessibilityNodeInfo hiç kullanılmaz (uygulamanın UI iş parçacığına eşzamanlı IPC, 500 ms filtre zaman aşımını aşabilir). Tasarım: `TYPE_WINDOW_STATE_CHANGED` olaylarından `windowId -> paket` haritası öğrenilir (bedava); `onKeyEvent` yalnız `windows` (system_server) ile odaktaki pencere id'sini bulur, haritada YouTube ise filtre/tüketim, bilinmiyorsa geçir + filtre kapalı. Sonuç: servis başladıktan sonra YouTube penceresi için bir pencere-durum olayı (ör. YouTube'a geçiş) gelene dek kısayol çalışmaz; cihazda bu gecikme gözlenmeli. (#3) Filtre geçişi hata verirse bir kez hemen yeniden denenir; kapatma yine başarısızsa `disableSelf()`. (#4) Kutu ilk DOWN'da değil, tüketilen DOWN/UP çifti tamamlanınca (UP'ta) açılır. (#5) Kutu açma hataları `failOpen()` çağırır. (#6) Odak YouTube/probe dışında bilinen bir pakete giderse `ProbeState.activeBox` (her yol, bölünmüş ekran dahil) taslakla kapanır.
+- **Codex 3. tur:** (#2) Kutu açıkken her pencere olayında `windows` z-sırasıyla (layer) taranır; kendi paketimiz, IME, erişilebilirlik overlay'i ve sistem pencereleri atlanır, ilk TYPE_APPLICATION penceresi bilinen YouTube değilse kutu taslakla kapanır. Ayrıca YouTube/probe/geçerli IME dışındaki paketten gelen her WINDOW_STATE_CHANGED kutuyu kapatır. Varsayım: TYPE_APPLICATION_OVERLAY pencereleri erişilebilirlikte TYPE_SYSTEM görünür; değilse B kutusu kendini kapatabilir (cihazda gözlenecek). C'de kendi Activity penceremizin paketi olay almadıysa bilinmiyor sayılıp kutu kapanabilir. (#3) Tracker yalnız `repeatCount == 0` DOWN'da başlar; test eklendi. (#1) Tuş kodları logcat'e yazılmaz (yalnız bellekte son 20, ekranda). Codex 703e7b3 #1: getWindows önbellek yarışı — probe'da azaltıldı (tuş kodu logcat'e yok), cihazda hızlı geçiş testiyle ölçülecek; ürün için T-005'te karar.
+- **Codex 4. tur:** (#1) Fail-open/kapatma yollarında önce filtre kapanır, tracker sıfırlanır, bekleyen açma iptal edilir; taslak yazımı (`commit()`) `closeBoxLater` ile ana handler'a ertelenir, `onKeyEvent` diske hiç dokunmadan geçir kararını döner (yalnız `shutdown` içinde senkron). (#2) `checkUnderlying` yalnız A/B (overlayView != null) için; C odak kontrolüne ve `onStop`'a dayanır.
+- **Açık sorular:** Codex afdd63d #3: başka paketin pencere olayı odak değişmeden kutuyu kapatabilir — probe için kabul (taslak korunur), cihazda gözlenecek; ürün kararı odak değişimine dayanmalı (T-005).
+- **Açık sorular (önceki):** Codex edbb150 #1: probe için reddedildi; üründe servis kapanışında taslak yazılamazsa yedek konuma yazma — Aşama 1 kuralı.
