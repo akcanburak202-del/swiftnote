@@ -11,7 +11,7 @@ Bilinen cihaz gerçekleri (MateBridge NOTES): Cmd/Meta uygulamalara ulaşmıyor;
 
 ## Karar
 
-- Varsayılan kısayol **`Ctrl+Shift+N`** (kullanıcı onayladı, 2026-10-14; Huawei'nin kendi kısayollarıyla çakışmıyorsa; T-002 kontrol eder).
+- Kısayol **`Alt+N`** (kullanıcı, 2026-10-15). İlk karar Ctrl+Shift+N idi (2026-10-14) ve cihazda çalıştı, ama YouTube'da Ctrl tek başına YouTube'un kendi kısayol panelini açıyor; N'yi biz tükettiğimiz için panel açık kalıyor ve oynatmayı bozuyor. Alt YouTube'da hiçbir şey tetiklemiyor (T-007 cihaz testi, `docs/NOTES.md`).
 - Tuş filtresi (`flagRequestFilterKeyEvents`) çalışma anında açılıp kapanır: yalnız **YouTube penceresi girdi odağındayken** (`com.google.android.youtube`; bölünmüş ekranda odak belirleyici) açık, başka her yerde kapalı → MateBridge ve diğer uygulamalara sıfır ek gecikme.
 - Filtre açıkken yalnız **tam kısayolun** down/up çifti tüketilir; diğer her tuş anında `false`. Hata → filtre kapanır, tuş geçer (fail open).
 - YouTube dışında keyCode loglanmaz (Mac'e yazılan tuşlar, parolalar dahil).

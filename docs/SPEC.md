@@ -17,7 +17,7 @@ Notlar sonra Mac'teki Obsidian vault'una (ideaverse) gider ve orada Echo'yla kon
 
 ## Akış
 
-1. YouTube oynarken (tam ekran dahil) **`Ctrl+Shift+N`** → video durur; ekranın altında ince bir not kutusu açılır, imleç içinde, tıklamaya gerek yok. **(kısayol ve tuş: kullanıcı, 2026-10-14)**
+1. YouTube oynarken (tam ekran dahil) **`Alt+N`** (2026-10-15'e kadar Ctrl+Shift+N; Ctrl YouTube'un kısayol panelini açtığı için değişti) → video durur; ekranın altında ince bir not kutusu açılır, imleç içinde, tıklamaya gerek yok. **(kısayol ve tuş: kullanıcı, 2026-10-14)**
 2. Kutunun üstünde salt okunur bir bağlam satırı: `▶ <Video başlığı> · <Kanal> @ 12:34`. **(öneri)**
 3. **Enter** → not dosyaya yazılır **ve** panoya kopyalanır; kutu kapanır; video kaldığı yerden devam eder. **(dosya + pano: kullanıcı onayı)**
 4. **Shift+Enter** → notta yeni satır. **Esc** → kaydetmeden kapat, video devam; kutuda yazı varsa **taslak** olarak saklanır ve bir sonraki kısayolda geri gelir (not asla kaybolmaz). **(öneri, Echo'nun kararı)**
