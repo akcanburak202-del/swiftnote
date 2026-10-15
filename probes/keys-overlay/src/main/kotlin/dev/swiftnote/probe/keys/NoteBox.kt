@@ -5,7 +5,9 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
+import android.text.Editable
 import android.text.InputType
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -60,7 +62,14 @@ class NoteBox(
             textSize = 12f
         }
         addView(status)
+        // IME text can arrive through InputConnection without any KeyEvent: typing also resets the idle timer.
+        edit.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = resetTimer()
+            override fun afterTextChanged(s: Editable?) {}
+        })
         ProbeState.boxOpen = true
+        ProbeState.activeBox = this
         resetTimer()
     }
 
@@ -76,24 +85,35 @@ class NoteBox(
         handler.postDelayed(timeout, 60_000L)
     }
 
-    /** Close keeping any text as a draft (focus lost, service gone, activity stopped). */
-    fun closeAsDraft(reason: String) = finish(save = false, reason = reason)
+    /**
+     * Close keeping any text as a draft (focus lost, service gone, activity stopped).
+     * Returns true if the box is closed and the text is on disk; false if the write failed and the box stays open.
+     */
+    fun closeAsDraft(reason: String): Boolean = finish(save = false, reason = reason)
 
-    private fun finish(save: Boolean, reason: String) {
-        if (finished) return
+    private fun finish(save: Boolean, reason: String): Boolean {
+        if (finished) return true
         val text = edit.text.toString()
-        // Write to disk first (rule 2). Saved note: probe has no file, so clearing the draft stands in for it.
-        val keep = if (save) "" else if (text.isBlank()) "" else text
-        if (!ProbeState.setDraft(context, keep)) {
+        // Write to disk first (rule 2). The probe has no note file: "last saved note" in prefs stands in for it.
+        val ok = if (save && text.isNotBlank()) {
+            ProbeState.setLastNote(context, text) && ProbeState.setDraft(context, "")
+        } else if (save) {
+            ProbeState.setDraft(context, "")
+        } else {
+            ProbeState.setDraft(context, if (text.isBlank()) "" else text)
+        }
+        if (!ok) {
             status.text = "Write failed, text kept. Press Enter to retry."
             resetTimer()
-            return
+            return false
         }
         finished = true
         handler.removeCallbacks(timeout)
         ProbeState.boxOpen = false
+        if (ProbeState.activeBox === this) ProbeState.activeBox = null
         ProbeState.logTransition("box closed: $reason, chars=${text.length}")
         onFinished(reason)
+        return true
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {

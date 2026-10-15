@@ -17,6 +17,9 @@ object ProbeState {
     @Volatile var service: ProbeService? = null
     @Volatile var serviceConnected = false
     @Volatile var filterOn = false
+    /** True when the last filter switch failed: the real filter state is not known. */
+    @Volatile var filterUnknown = false
+    @Volatile var activeBox: NoteBox? = null
     @Volatile var focusedPackage: String? = null
     @Volatile var boxOpen = false
     @Volatile var nonYoutubeKeyEvents = 0
@@ -37,6 +40,11 @@ object ProbeState {
 
     /** commit(): synchronous, so the draft is on disk before the box closes. */
     fun setDraft(c: Context, text: String): Boolean = prefs(c).edit().putString("draft", text).commit()
+
+    /** Stand-in for the note file in this probe. Shown on the main screen, NEVER logged. */
+    fun lastNote(c: Context): String = prefs(c).getString("lastNote", "") ?: ""
+
+    fun setLastNote(c: Context, text: String): Boolean = prefs(c).edit().putString("lastNote", text).commit()
 
     /** Only called while YouTube has input focus. */
     @Synchronized fun logYoutubeKey(keyCode: Int, action: Int, meta: Int, repeat: Int) {

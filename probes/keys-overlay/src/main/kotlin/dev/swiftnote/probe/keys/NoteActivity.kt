@@ -38,8 +38,9 @@ class NoteActivity : Activity() {
 
     override fun onStop() {
         // Fail open: if the user leaves (PiP, recents), keep the text as a draft and go away.
-        box?.closeAsDraft("activity stopped")
-        if (!isFinishing) finish()
+        // Finish only if the text is on disk; otherwise the box stays up with an error.
+        val saved = box?.closeAsDraft("activity stopped") ?: true
+        if (saved && !isFinishing) finish()
         super.onStop()
     }
 }

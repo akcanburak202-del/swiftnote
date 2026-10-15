@@ -20,9 +20,14 @@ import android.widget.Toast
  */
 class ProbeService : AccessibilityService() {
     private val main = Handler(Looper.getMainLooper())
-    private var consumedDown = false
+    private val tracker = ShortcutTracker()
     private var overlayView: View? = null
     private var focusedPkg: String? = null
+
+    /** Queued by the shortcut; re-checks that YouTube still has focus when it runs. */
+    private val openRunnable = Runnable {
+        if (ProbeState.serviceConnected && focusNow() == ProbeState.YOUTUBE) showBox()
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -30,15 +35,15 @@ class ProbeService : AccessibilityService() {
         ProbeState.serviceConnected = true
         setFilter(false)
         ProbeState.logTransition("service connected")
-        evaluateFocus()
+        applyFocus(focusNow())
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        evaluateFocus()
+        applyFocus(focusNow())
     }
 
     override fun onInterrupt() {
-        setFilter(false)
+        failOpen("interrupt")
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
@@ -52,8 +57,15 @@ class ProbeService : AccessibilityService() {
     }
 
     private fun shutdown(why: String) {
+        main.removeCallbacks(openRunnable)
+        tracker.reset()
         setFilter(false)
+        // Draft first, then the view goes away.
+        (overlayView as? NoteBox)?.closeAsDraft("service $why")
+        ProbeState.activeBox?.closeAsDraft("service $why")
         removeOverlay()
+        ProbeState.boxOpen = false
+        ProbeState.activeBox = null
         ProbeState.serviceConnected = false
         ProbeState.service = null
         ProbeState.logTransition("service gone: $why")
@@ -61,35 +73,56 @@ class ProbeService : AccessibilityService() {
 
     // ---- focus tracking and filter switching -------------------------------------------------------------------
 
+    /** Package of the window with input focus right now, or null if none/unknown (an error fails open). */
     @Suppress("DEPRECATION")
-    private fun evaluateFocus() {
-        var pkg: String? = null
-        try {
+    private fun focusNow(): String? {
+        return try {
             val wins = windows
             val focused = wins?.firstOrNull { it.isFocused }
             val root = focused?.root
-            pkg = root?.packageName?.toString()
+            val pkg = root?.packageName?.toString()
             root?.recycle()
             wins?.forEach { it.recycle() }
+            pkg
         } catch (t: Throwable) {
             ProbeState.logTransition("focus lookup failed: ${t.javaClass.simpleName}")
+            failOpen("focus lookup error")
+            null
         }
+    }
+
+    private fun applyFocus(pkg: String?) {
         if (pkg != focusedPkg) {
             focusedPkg = pkg
             ProbeState.focusedPackage = pkg
-            // Package names of the focused window are allowed in logs (rule 3 forbids key codes, not packages).
+            // Package names are allowed in logs (rule 3 forbids key codes, not packages).
             ProbeState.logTransition("focus -> ${pkg ?: "none"}")
+            tracker.reset()
+            main.removeCallbacks(openRunnable)
         }
         setFilter(pkg == ProbeState.YOUTUBE)
-        // Fail open: the user went to another app while an overlay box was up; keep the text as a draft.
+        // The user went to another app while an overlay box was up: keep the text as a draft.
         val v = overlayView
         if (v is NoteBox && pkg != null && pkg != ProbeState.YOUTUBE && pkg != packageName) v.closeAsDraft("focus left")
     }
 
+    /** Filter off, key state forgotten, pending open dropped, open box closed as a draft. */
+    private fun failOpen(why: String) {
+        tracker.reset()
+        main.removeCallbacks(openRunnable)
+        setFilter(false)
+        ProbeState.activeBox?.closeAsDraft("fail-open: $why")
+    }
+
+    /**
+     * Switches the key filter. A failed switch is never recorded as a verified state: the state becomes unknown
+     * and the next call retries even if the wanted value equals the last recorded one.
+     */
     private fun setFilter(on: Boolean) {
-        if (on == ProbeState.filterOn) return
+        if (!on) tracker.reset()
+        if (on == ProbeState.filterOn && !ProbeState.filterUnknown) return
         try {
-            val info = serviceInfo ?: return
+            val info = serviceInfo ?: throw IllegalStateException("no serviceInfo")
             info.flags = if (on) {
                 info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
             } else {
@@ -97,10 +130,12 @@ class ProbeService : AccessibilityService() {
             }
             serviceInfo = info
             ProbeState.filterOn = on
+            ProbeState.filterUnknown = false
             ProbeState.logTransition("filter ${if (on) "ON" else "OFF"}")
         } catch (t: Throwable) {
             ProbeState.filterOn = false
-            ProbeState.logTransition("filter switch failed: ${t.javaClass.simpleName}")
+            ProbeState.filterUnknown = true
+            ProbeState.logTransition("filter switch failed (state unknown): ${t.javaClass.simpleName}")
         }
     }
 
@@ -108,34 +143,26 @@ class ProbeService : AccessibilityService() {
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         try {
-            if (!ProbeState.filterOn || focusedPkg != ProbeState.YOUTUBE) {
-                // Outside YouTube: count only, never the key code. Re-check focus, then pass through.
+            // Never trust the cached focus: re-check synchronously before logging or consuming anything.
+            val pkg = focusNow()
+            applyFocus(pkg)
+            if (pkg != ProbeState.YOUTUBE) {
+                // Outside YouTube (or unknown): count only, never the key code. Pass through.
                 ProbeState.nonYoutubeKeyEvents++
-                evaluateFocus()
                 return false
             }
             ProbeState.logYoutubeKey(event.keyCode, event.action, event.metaState, event.repeatCount)
-            if (event.keyCode != KeyEvent.KEYCODE_N) return false
-            when (event.action) {
-                KeyEvent.ACTION_DOWN -> {
-                    if (consumedDown || ShortcutMatcher.matches(event.keyCode, event.metaState)) {
-                        if (!consumedDown) main.post { showBox() }
-                        consumedDown = true
-                        return true
-                    }
-                }
-                KeyEvent.ACTION_UP -> {
-                    if (consumedDown) {
-                        consumedDown = false
-                        return true
-                    }
+            return when (tracker.onKey(event.keyCode, event.action, event.metaState)) {
+                Decision.PASS -> false
+                Decision.CONSUME -> true
+                Decision.CONSUME_AND_OPEN -> {
+                    main.post(openRunnable)
+                    true
                 }
             }
-            return false
         } catch (t: Throwable) {
-            consumedDown = false
-            setFilter(false)
             ProbeState.logTransition("onKeyEvent error: ${t.javaClass.simpleName}")
+            failOpen("onKeyEvent error")
             return false
         }
     }
@@ -162,7 +189,7 @@ class ProbeService : AccessibilityService() {
                 }
             }
         } catch (t: Throwable) {
-            ProbeState.boxOpen = false
+            ProbeState.activeBox?.closeAsDraft("open failed")
             removeOverlay()
             ProbeState.logTransition("open box failed: ${t.javaClass.simpleName}")
         }
@@ -196,6 +223,5 @@ class ProbeService : AccessibilityService() {
             (getSystemService(WINDOW_SERVICE) as WindowManager).removeView(v)
         } catch (_: Throwable) {
         }
-        ProbeState.boxOpen = false
     }
 }

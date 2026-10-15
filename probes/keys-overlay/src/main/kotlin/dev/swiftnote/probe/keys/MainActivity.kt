@@ -85,7 +85,8 @@ class MainActivity : Activity() {
         val s = ProbeState
         val sb = StringBuilder()
         sb.append("service connected: ${s.serviceConnected}\n")
-        sb.append("key filter:        ${if (s.filterOn) "ON" else "off"}\n")
+        sb.append("key filter:        ${if (s.filterUnknown) "UNKNOWN (switch failed, retrying)" else if (s.filterOn) "ON" else "off"}\n")
+        sb.append("last saved note:   ${s.lastNote(this).ifEmpty { "(none)" }}\n")
         sb.append("focused package:   ${s.focusedPackage ?: "none"}\n")
         sb.append("path:              ${s.path(this)}\n")
         sb.append("box open:          ${s.boxOpen}\n")
